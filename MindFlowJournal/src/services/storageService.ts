@@ -6,9 +6,11 @@ import { Journal, SecurityQuestion } from '../types';
 const KEYS = {
   SALT: '@mindflow_salt',
   SECURITY_QUESTIONS: '@mindflow_security_questions',
+  SECURITY_ANSWERS_HASH: '@mindflow_security_answers_hash', // ADD THIS
   JOURNALS: '@mindflow_journals',
   SETTINGS: '@mindflow_settings',
   FIRST_LAUNCH: '@mindflow_first_launch',
+  VERIFICATION_TOKEN: '@mindflow_verification_token',
 };
 
 /**
@@ -88,6 +90,39 @@ export const getSecurityQuestions = async (
     return decryptJSON(key, encrypted) as SecurityQuestion[];
   } catch (error) {
     console.error('Error getting security questions:', error);
+    return null;
+  }
+};
+
+/**
+ * Save security answer hashes (unencrypted for recovery)
+ */
+export const saveSecurityAnswerHashes = async (
+  answerHashes: Array<{ questionId: string; answerHash: string }>
+): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(
+      KEYS.SECURITY_ANSWERS_HASH,
+      JSON.stringify(answerHashes)
+    );
+  } catch (error) {
+    console.error('Error saving answer hashes:', error);
+    throw new Error('Failed to save security answer hashes');
+  }
+};
+
+/**
+ * Get security answer hashes (for verification during recovery)
+ */
+export const getSecurityAnswerHashes = async (): Promise<
+  Array<{ questionId: string; answerHash: string }> | null
+> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.SECURITY_ANSWERS_HASH);
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error getting answer hashes:', error);
     return null;
   }
 };
@@ -227,6 +262,40 @@ export const reEncryptAllData = async (
   } catch (error) {
     console.error('Error re-encrypting data:', error);
     throw new Error('Failed to re-encrypt data - please try again');
+  }
+};
+
+
+export const saveVerificationToken = async (key: string): Promise<void> => {
+  try {
+    const verificationData = {
+      timestamp: new Date().toISOString(),
+      verified: true,
+    };
+    const encrypted = encryptJSON(key, verificationData);
+    await AsyncStorage.setItem(KEYS.VERIFICATION_TOKEN, encrypted);
+  } catch (error) {
+    console.error('Error saving verification token:', error);
+    throw new Error('Failed to save verification token');
+  }
+};
+
+/**
+ * Verify password by trying to decrypt the verification token
+ */
+export const verifyPassword = async (key: string): Promise<boolean> => {
+  try {
+    const encrypted = await AsyncStorage.getItem(KEYS.VERIFICATION_TOKEN);
+    if (!encrypted) {
+      // No token stored yet - this shouldn't happen in production
+      return true; // Allow for backward compatibility
+    }
+    
+    const decrypted = decryptJSON(key, encrypted);
+    return decrypted && decrypted.verified === true;
+  } catch (error) {
+    // Decryption failed = wrong password
+    return false;
   }
 };
 
