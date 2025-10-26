@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
+
 import {
   TextInput,
   Button,
@@ -10,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../stores/hooks';
 import { setAuthenticated, setSalt } from '../../stores/slices/authSlice';
-import { useAuth } from '../../utils/authContext';
+import { Alert } from '../../utils/alert';
 import {
   deriveKeyFromPassword,
   verifyHash,
@@ -22,6 +23,7 @@ import {
   saveSalt,
   reEncryptAllData,
 } from '../../services/storageService';
+import { useAuth } from '@/src/utils/authContext';
 
 const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
   navigation,

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Alert } from '../../utils/alert';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import {
   TextInput,
   Button,
@@ -8,6 +9,7 @@ import {
   Chip,
   HelperText,
 } from 'react-native-paper';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../stores/hooks';
 import {
@@ -25,7 +27,9 @@ import {
   saveSecurityQuestions,
   savePublicSecurityQuestions,
   markAsLaunched,
+  saveVerificationToken, // ADD THIS
 } from '../../services/storageService';
+
 import { PREDEFINED_SECURITY_QUESTIONS } from '../../utils/securityQuestions';
 import { SecurityQuestion } from '../../types';
 
@@ -100,6 +104,8 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // 4. Save security questions (encrypted with user's key)
       await saveSecurityQuestions(securityQuestions, key);
 
+
+      await saveVerificationToken(key);
       // 5. Save public copy (just questions, for recovery flow)
       const publicQuestions = securityQuestions.map(sq => ({
         questionId: sq.questionId,

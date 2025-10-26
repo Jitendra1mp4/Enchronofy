@@ -9,8 +9,8 @@ const KEYS = {
   JOURNALS: '@mindflow_journals',
   SETTINGS: '@mindflow_settings',
   FIRST_LAUNCH: '@mindflow_first_launch',
+  VERIFICATION_TOKEN: '@mindflow_verification_token', // ADD THIS
 };
-
 /**
  * Check if this is the first app launch
  */
@@ -227,6 +227,40 @@ export const reEncryptAllData = async (
   } catch (error) {
     console.error('Error re-encrypting data:', error);
     throw new Error('Failed to re-encrypt data - please try again');
+  }
+};
+
+
+export const saveVerificationToken = async (key: string): Promise<void> => {
+  try {
+    const verificationData = {
+      timestamp: new Date().toISOString(),
+      verified: true,
+    };
+    const encrypted = encryptJSON(key, verificationData);
+    await AsyncStorage.setItem(KEYS.VERIFICATION_TOKEN, encrypted);
+  } catch (error) {
+    console.error('Error saving verification token:', error);
+    throw new Error('Failed to save verification token');
+  }
+};
+
+/**
+ * Verify password by trying to decrypt the verification token
+ */
+export const verifyPassword = async (key: string): Promise<boolean> => {
+  try {
+    const encrypted = await AsyncStorage.getItem(KEYS.VERIFICATION_TOKEN);
+    if (!encrypted) {
+      // No token stored yet - this shouldn't happen in production
+      return true; // Allow for backward compatibility
+    }
+    
+    const decrypted = decryptJSON(key, encrypted);
+    return decrypted && decrypted.verified === true;
+  } catch (error) {
+    // Decryption failed = wrong password
+    return false;
   }
 };
 

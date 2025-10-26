@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { TextInput, Button, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../stores/hooks';
@@ -9,8 +9,9 @@ import { deriveKeyFromPassword } from '../../services/encryptionService';
 import {
   getSalt,
   isFirstLaunch,
-  listJournals,
+  verifyPassword,
 } from '../../services/storageService';
+import { Alert } from '../../utils/alert';
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -51,10 +52,9 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // 2. Derive key from password
       const { key } = deriveKeyFromPassword(password, salt);
 
-      // 3. Try to decrypt journals to verify password
-      try {
-        await listJournals(key);
-      } catch (error) {
+      // 3. Verify password using verification token
+      const isValid = await verifyPassword(key);
+      if (!isValid) {
         Alert.alert(
           'Wrong Password',
           'The password you entered is incorrect. Please try again or use password recovery.'
@@ -72,7 +72,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Error', 'Failed to login. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
