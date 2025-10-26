@@ -1,15 +1,39 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text, Button, useTheme } from 'react-native-paper';
+import React, { useEffect } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Card, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppSelector } from '../../stores/hooks';
+import { listJournals } from '../../services/storageService';
+import { useAppDispatch, useAppSelector } from '../../stores/hooks';
+import { setJournals } from '../../stores/slices/journalsSlice';
+import { useAuth } from '../../utils/authContext';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
+  const dispatch = useAppDispatch();
+  const { encryptionKey } = useAuth();
+  
   const currentStreak = useAppSelector(state => state.journals.currentStreak);
+  const journals = useAppSelector(state => state.journals.journals);
+
+  useEffect(() => {
+    loadJournals();
+  }, [encryptionKey]);
+
+  const loadJournals = async () => {
+    if (!encryptionKey) return;
+
+    try {
+      const loadedJournals = await listJournals(encryptionKey);
+      dispatch(setJournals(loadedJournals));
+    } catch (error) {
+      console.error('Error loading journals:', error);
+    }
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <ScrollView contentContainerStyle={styles.content}>
         <Card style={styles.card}>
           <Card.Content>
@@ -18,6 +42,18 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {currentStreak}
             </Text>
             <Text variant="bodyMedium">days in a row</Text>
+          </Card.Content>
+        </Card>
+
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.cardTitle}>
+              Your Journals
+            </Text>
+            <Text variant="bodyLarge" style={styles.statNumber}>
+              {journals.length}
+            </Text>
+            <Text variant="bodyMedium">total entries</Text>
           </Card.Content>
         </Card>
 
@@ -92,6 +128,12 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     fontWeight: 'bold',
   },
+  statNumber: {
+    textAlign: 'center',
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginVertical: 8,
+  },
   actionButton: {
     marginBottom: 12,
   },
@@ -103,4 +145,3 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreen;
-
