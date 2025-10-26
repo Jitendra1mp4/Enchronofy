@@ -6,11 +6,13 @@ import { Journal, SecurityQuestion } from '../types';
 const KEYS = {
   SALT: '@mindflow_salt',
   SECURITY_QUESTIONS: '@mindflow_security_questions',
+  SECURITY_ANSWERS_HASH: '@mindflow_security_answers_hash', // ADD THIS
   JOURNALS: '@mindflow_journals',
   SETTINGS: '@mindflow_settings',
   FIRST_LAUNCH: '@mindflow_first_launch',
-  VERIFICATION_TOKEN: '@mindflow_verification_token', // ADD THIS
+  VERIFICATION_TOKEN: '@mindflow_verification_token',
 };
+
 /**
  * Check if this is the first app launch
  */
@@ -88,6 +90,39 @@ export const getSecurityQuestions = async (
     return decryptJSON(key, encrypted) as SecurityQuestion[];
   } catch (error) {
     console.error('Error getting security questions:', error);
+    return null;
+  }
+};
+
+/**
+ * Save security answer hashes (unencrypted for recovery)
+ */
+export const saveSecurityAnswerHashes = async (
+  answerHashes: Array<{ questionId: string; answerHash: string }>
+): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(
+      KEYS.SECURITY_ANSWERS_HASH,
+      JSON.stringify(answerHashes)
+    );
+  } catch (error) {
+    console.error('Error saving answer hashes:', error);
+    throw new Error('Failed to save security answer hashes');
+  }
+};
+
+/**
+ * Get security answer hashes (for verification during recovery)
+ */
+export const getSecurityAnswerHashes = async (): Promise<
+  Array<{ questionId: string; answerHash: string }> | null
+> => {
+  try {
+    const data = await AsyncStorage.getItem(KEYS.SECURITY_ANSWERS_HASH);
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error getting answer hashes:', error);
     return null;
   }
 };

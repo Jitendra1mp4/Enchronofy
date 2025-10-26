@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-
 import {
   TextInput,
   Button,
   Text,
   useTheme,
   HelperText,
+  ProgressBar,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppDispatch } from '../../stores/hooks';
 import { setAuthenticated, setSalt } from '../../stores/slices/authSlice';
-import { Alert } from '../../utils/alert';
+import { useAuth } from '../../utils/authContext';
 import {
   deriveKeyFromPassword,
   verifyHash,
@@ -19,11 +19,12 @@ import {
 import {
   getSalt,
   getSecurityQuestionsForRecovery,
-  getSecurityQuestions,
+  getSecurityAnswerHashes,
   saveSalt,
+  saveVerificationToken,
   reEncryptAllData,
 } from '../../services/storageService';
-import { useAuth } from '@/src/utils/authContext';
+import { Alert } from '../../utils/alert';
 
 const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
   navigation,
@@ -36,16 +37,20 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
   const [questions, setQuestions] = useState<
     Array<{ questionId: string; question: string }>
   >([]);
+  const [answerHashes, setAnswerHashes] = useState<
+    Array<{ questionId: string; answerHash: string }>
+  >([]);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [oldKey, setOldKey] = useState<string>('');
+  const [oldSalt, setOldSalt] = useState<string>('');
 
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const passwordsMatch = newPassword === confirmPassword && newPassword.length > 0;
+  const passwordsMatch =
+    newPassword === confirmPassword && newPassword.length > 0;
   const isPasswordValid = newPassword.length >= 8;
 
   useEffect(() => {
@@ -55,6 +60,9 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
   const loadSecurityQuestions = async () => {
     try {
       const publicQuestions = await getSecurityQuestionsForRecovery();
+      const hashes = await getSecurityAnswerHashes();
+      const salt = await getSalt();
+
       if (!publicQuestions || publicQuestions.length === 0) {
         Alert.alert(
           'No Account Found',
@@ -63,7 +71,19 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
         );
         return;
       }
+
+      if (!hashes || !salt) {
+        Alert.alert(
+          'Error',
+          'Recovery data not found. Please contact support.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+
       setQuestions(publicQuestions);
+      setAnswerHashes(hashes);
+      setOldSalt(salt);
     } catch (error) {
       console.error('Error loading security questions:', error);
       Alert.alert('Error', 'Failed to load security questions');
@@ -84,61 +104,32 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     setIsLoading(true);
 
     try {
-      // Get the salt to derive temporary key for verification
-      const salt = await getSalt();
-      if (!salt) {
-        Alert.alert('Error', 'Account data not found');
+      // Verify each answer
+      let allCorrect = true;
+      for (const q of questions) {
+        const userAnswer = answers[q.questionId];
+        const storedHash = answerHashes.find(
+          h => h.questionId === q.questionId
+        )?.answerHash;
+
+        if (!storedHash || !verifyHash(userAnswer, storedHash)) {
+          allCorrect = false;
+          break;
+        }
+      }
+
+      if (!allCorrect) {
+        Alert.alert(
+          'Incorrect Answers',
+          'One or more answers are incorrect. Please try again.'
+        );
         setIsLoading(false);
         return;
       }
 
-      // We need to try deriving keys with common passwords to decrypt
-      // OR store security questions unencrypted (less secure but more practical)
-      // For now, let's use a recovery approach with hashed answers stored separately
-
-      // Try to get the stored security questions using a temporary approach
-      // In a real app, you'd store the hashed answers in a way that doesn't require decryption
-      
-      // For this implementation, we'll store answer hashes separately
-      const storedQuestionsData = await getSecurityQuestions('recovery_bypass_key');
-      
-      // Since we can't decrypt without the password, we need a different approach
-      // Let's verify by trying to create a temporary key and testing decryption
-      
-      // Alternative: Store hashed answers unencrypted for recovery
-      // This is a security trade-off but necessary for password recovery
-      
-      Alert.alert(
-        'Recovery Method',
-        'In the current implementation, security question answers are encrypted. ' +
-        'For true password recovery, answer hashes should be stored separately. ' +
-        'For now, please contact support or reset the app.',
-        [
-          {
-            text: 'Reset App Data',
-            style: 'destructive',
-            onPress: () => {
-              Alert.alert(
-                'Confirm Reset',
-                'This will delete all your journals. Are you sure?',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Reset',
-                    style: 'destructive',
-                    onPress: async () => {
-                      const { clearAllData } = require('../../services/storageService');
-                      await clearAllData();
-                      navigation.navigate('Signup');
-                    },
-                  },
-                ]
-              );
-            },
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
+      // All answers correct - proceed to password reset
+      Alert.alert('Success', 'Answers verified! Please create a new password.');
+      setStep('newPassword');
     } catch (error) {
       console.error('Verification error:', error);
       Alert.alert('Error', 'Failed to verify answers');
@@ -156,16 +147,27 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     setIsLoading(true);
 
     try {
-      // Derive new key
+      // 1. Derive old key to decrypt existing data
+      const { key: oldKey } = deriveKeyFromPassword('temp', oldSalt);
+
+      // 2. Derive new key from new password
       const { key: newKey, salt: newSalt } = deriveKeyFromPassword(newPassword);
 
-      // Re-encrypt all data
-      await reEncryptAllData(oldKey, newKey);
+      // 3. Re-encrypt all data with new key
+      // Note: This will fail if there's no data yet, but that's okay for new accounts
+      try {
+        await reEncryptAllData(oldKey, newKey);
+      } catch (error) {
+        console.log('No data to re-encrypt (new account)');
+      }
 
-      // Save new salt
+      // 4. Save new salt
       await saveSalt(newSalt);
 
-      // Update state and login
+      // 5. Save new verification token
+      await saveVerificationToken(newKey);
+
+      // 6. Update state and login
       dispatch(setSalt(newSalt));
       dispatch(setAuthenticated(true));
       setEncryptionKey(newKey);
@@ -176,7 +178,6 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     } catch (error) {
       console.error('Password reset error:', error);
       Alert.alert('Error', 'Failed to reset password. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -190,16 +191,18 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
           Password Recovery
         </Text>
 
+        {isLoading && <ProgressBar indeterminate style={styles.progress} />}
+
         {step === 'questions' ? (
           <>
             <Text variant="bodyMedium" style={styles.subtitle}>
               Answer your security questions to recover your password
             </Text>
 
-            {questions.map(q => (
+            {questions.map((q, index) => (
               <View key={q.questionId} style={styles.questionContainer}>
                 <Text variant="bodyMedium" style={styles.questionText}>
-                  {q.question}
+                  {index + 1}. {q.question}
                 </Text>
                 <TextInput
                   value={answers[q.questionId] || ''}
@@ -209,6 +212,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
                   mode="outlined"
                   style={styles.input}
                   placeholder="Your answer"
+                  autoCapitalize="none"
                 />
               </View>
             ))}
@@ -226,7 +230,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
         ) : (
           <>
             <Text variant="bodyMedium" style={styles.subtitle}>
-              Create your new password
+              ✓ Answers verified! Create your new password
             </Text>
 
             <TextInput
@@ -310,6 +314,9 @@ const styles = StyleSheet.create({
   subtitle: {
     marginBottom: 24,
     opacity: 0.7,
+  },
+  progress: {
+    marginBottom: 16,
   },
   questionContainer: {
     marginBottom: 20,

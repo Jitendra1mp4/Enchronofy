@@ -28,6 +28,7 @@ import {
   savePublicSecurityQuestions,
   markAsLaunched,
   saveVerificationToken, // ADD THIS
+  saveSecurityAnswerHashes, 
 } from '../../services/storageService';
 
 import { PREDEFINED_SECURITY_QUESTIONS } from '../../utils/securityQuestions';
@@ -105,7 +106,18 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       await saveSecurityQuestions(securityQuestions, key);
 
 
+
+      // 4.5 Save verification token
       await saveVerificationToken(key);
+
+      // 4.6 Save answer hashes separately for recovery (ADD THIS)
+      const answerHashes = selectedQuestions.map(qId => ({
+        questionId: qId,
+        answerHash: hashText(answers[qId]),
+      }));
+      await saveSecurityAnswerHashes(answerHashes);
+
+      
       // 5. Save public copy (just questions, for recovery flow)
       const publicQuestions = securityQuestions.map(sq => ({
         questionId: sq.questionId,
