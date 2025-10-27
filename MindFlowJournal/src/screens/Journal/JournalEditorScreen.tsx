@@ -1,35 +1,34 @@
-import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Image,
+  View,
+  StyleSheet,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  StyleSheet,
-  View
+  Image,
 } from 'react-native';
 import {
+  TextInput,
   Button,
-  Chip,
+  useTheme,
   HelperText,
   IconButton,
-  TextInput,
-  useTheme,
+  Chip,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { v4 as uuidv4 } from 'uuid';
-import {
-  compressImage,
-  deleteEncryptedImage,
-  loadEncryptedImage,
-  saveEncryptedImage,
-} from '../../services/imageService';
-import { getJournal, saveJournal } from '../../services/storageService';
+import * as ImagePicker from 'expo-image-picker';
 import { useAppDispatch } from '../../stores/hooks';
 import { addJournal, updateJournal } from '../../stores/slices/journalsSlice';
-import { Journal } from '../../types';
-import { Alert } from '../../utils/alert';
 import { useAuth } from '../../utils/authContext';
+import { saveJournal, getJournal } from '../../services/storageService';
+import {
+  compressImage,
+  imageUriToBase64,
+  base64ToDataUri,
+} from '../../services/imageService';
+import { Journal } from '../../types';
+import { v4 as uuidv4 } from 'uuid';
+import { Alert } from '../../utils/alert';
 
 const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -44,8 +43,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
-  const [images, setImages] = useState<string[]>([]);
-  const [decryptedImages, setDecryptedImages] = useState<string[]>([]);
+  const [imageBase64List, setImageBase64List] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -60,12 +58,14 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   }, []);
 
   const requestPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'Please grant photo library access to attach images'
-      );
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please grant photo library access to attach images'
+        );
+      }
     }
   };
 
@@ -79,14 +79,9 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         setTitle(journal.title || '');
         setText(journal.text);
         
-        // Load encrypted images
+        // Images are already base64 strings
         if (journal.images && journal.images.length > 0) {
-          setImages(journal.images);
-          // Decrypt images for display
-          const decrypted = await Promise.all(
-            journal.images.map(img => loadEncryptedImage(img, encryptionKey))
-          );
-          setDecryptedImages(decrypted);
+          setImageBase64List(journal.images);
         }
       }
     } catch (error) {
@@ -115,6 +110,11 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const takePhoto = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Not Supported', 'Camera is not available on web. Please use "Add Photo" instead.');
+      return;
+    }
+
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
@@ -137,45 +137,23 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const addImage = async (uri: string) => {
-    if (!encryptionKey) return;
-
     try {
       // Compress image
       const compressed = await compressImage(uri);
 
-      // Encrypt and save
-      const imageName = `img_${Date.now()}_${uuidv4()}`;
-      const encryptedPath = await saveEncryptedImage(
-        compressed,
-        imageName,
-        encryptionKey
-      );
+      // Convert to base64
+      const base64 = await imageUriToBase64(compressed);
 
-      // Update state
-      setImages([...images, encryptedPath]);
-      setDecryptedImages([...decryptedImages, compressed]);
+      // Add to list
+      setImageBase64List([...imageBase64List, base64]);
     } catch (error) {
       console.error('Error adding image:', error);
       Alert.alert('Error', 'Failed to add image');
     }
   };
 
-  const removeImage = async (index: number) => {
-    try {
-      const imageToRemove = images[index];
-      
-      // Delete encrypted file
-      if (imageToRemove) {
-        await deleteEncryptedImage(imageToRemove);
-      }
-
-      // Update state
-      setImages(images.filter((_, i) => i !== index));
-      setDecryptedImages(decryptedImages.filter((_, i) => i !== index));
-    } catch (error) {
-      console.error('Error removing image:', error);
-      Alert.alert('Error', 'Failed to remove image');
-    }
+  const removeImage = (index: number) => {
+    setImageBase64List(imageBase64List.filter((_, i) => i !== index));
   };
 
   const handleSave = async (showAlert: boolean = true) => {
@@ -207,7 +185,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         title: title.trim() || undefined,
         text: text.trim(),
         mood: undefined,
-        images: images.length > 0 ? images : undefined,
+        images: imageBase64List.length > 0 ? imageBase64List : undefined,
       };
 
       await saveJournal(journal, encryptionKey);
@@ -286,7 +264,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             placeholder="Start writing..."
           />
 
-          {/* Image Picker Buttons */}
           <View style={styles.imageButtonsContainer}>
             <Chip
               icon="image"
@@ -296,22 +273,26 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             >
               Add Photo
             </Chip>
-            <Chip
-              icon="camera"
-              onPress={takePhoto}
-              style={styles.imageButton}
-              mode="outlined"
-            >
-              Take Photo
-            </Chip>
+            {Platform.OS !== 'web' && (
+              <Chip
+                icon="camera"
+                onPress={takePhoto}
+                style={styles.imageButton}
+                mode="outlined"
+              >
+                Take Photo
+              </Chip>
+            )}
           </View>
 
-          {/* Image Preview Grid */}
-          {decryptedImages.length > 0 && (
+          {imageBase64List.length > 0 && (
             <View style={styles.imagesGrid}>
-              {decryptedImages.map((uri, index) => (
+              {imageBase64List.map((base64, index) => (
                 <View key={index} style={styles.imageContainer}>
-                  <Image source={{ uri }} style={styles.imagePreview} />
+                  <Image
+                    source={{ uri: base64ToDataUri(base64) }}
+                    style={styles.imagePreview}
+                  />
                   <IconButton
                     icon="close-circle"
                     size={24}

@@ -6,7 +6,7 @@ export type Journal = {
   title?: string;
   text: string;
   mood?: string;
-  images?: string[];
+  images?: string[]; // Now stores base64 strings instead of file paths
 };
 
 export type SecurityQuestion = {

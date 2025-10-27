@@ -18,7 +18,7 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { deleteEncryptedImage, loadEncryptedImage } from '../../services/imageService';
+import { base64ToDataUri, deleteEncryptedImage, loadEncryptedImage } from '../../services/imageService';
 import { deleteJournal, getJournal } from '../../services/storageService';
 import { useAppDispatch } from '../../stores/hooks';
 import { deleteJournal as deleteJournalAction } from '../../stores/slices/journalsSlice';
@@ -48,27 +48,21 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   }, [journalId]);
 
   const loadJournal = async () => {
-    if (!encryptionKey) return;
+  if (!encryptionKey) return;
 
-    setIsLoading(true);
-    try {
-      const loadedJournal = await getJournal(journalId, encryptionKey);
-      setJournal(loadedJournal);
+  setIsLoading(true);
+  try {
+    const loadedJournal = await getJournal(journalId, encryptionKey);
+    setJournal(loadedJournal);
+    // Images are already base64, no decryption needed
+  } catch (error) {
+    console.error('Error loading journal:', error);
+    Alert.alert('Error', 'Failed to load journal entry');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-      // Decrypt images if present
-      if (loadedJournal?.images && loadedJournal.images.length > 0) {
-        const decrypted = await Promise.all(
-          loadedJournal.images.map(img => loadEncryptedImage(img, encryptionKey))
-        );
-        setDecryptedImages(decrypted);
-      }
-    } catch (error) {
-      console.error('Error loading journal:', error);
-      Alert.alert('Error', 'Failed to load journal entry');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDelete = () => {
     Alert.alert(
@@ -164,21 +158,22 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
         <Divider style={styles.divider} />
 
-        {/* Images Gallery */}
-        {decryptedImages.length > 0 && (
+       {/* Images Gallery */}
+        {journal.images && journal.images.length > 0 && (
           <View style={styles.imagesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {decryptedImages.map((uri, index) => (
+              {journal.images.map((base64, index) => (
                 <TouchableOpacity
                   key={index}
-                  onPress={() => setSelectedImage(uri)}
+                  onPress={() => setSelectedImage(base64ToDataUri(base64))}
                 >
-                  <Image source={{ uri }} style={styles.thumbnail} />
+                  <Image source={{ uri: base64ToDataUri(base64) }} style={styles.thumbnail} />
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         )}
+
 
         <Text variant="bodyLarge" style={styles.text}>
           {journal.text}
