@@ -32,9 +32,10 @@ export type RootStackParamList = {
   Main: undefined;
   Home: undefined;
   JournalList: undefined;
-  JournalEditor: { journalId?: string };
+  JournalEditor: { journalId?: string; selectedDate?: string }; // Updated
   JournalDetail: { journalId: string };
   Calendar: undefined;
   Export: undefined;
   Settings: undefined;
 };
+

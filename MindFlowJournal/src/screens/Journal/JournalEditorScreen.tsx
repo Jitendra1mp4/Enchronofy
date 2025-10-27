@@ -39,6 +39,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const { encryptionKey } = useAuth();
 
   const journalId = route.params?.journalId;
+   const selectedDate = route.params?.selectedDate; // ADD THIS LINE
   const isEditing = !!journalId;
 
   const [title, setTitle] = useState('');
@@ -190,7 +191,7 @@ const addImage = async (uri: string) => {
 
       const journal: Journal = {
         id: journalId || uuidv4(),
-        date: existingJournal?.date || now,
+         date: existingJournal?.date || selectedDate || now,
         createdAt: existingJournal?.createdAt || now,
         updatedAt: now,
         title: title.trim() || undefined,

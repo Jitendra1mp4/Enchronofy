@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, useTheme, Card, Chip } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
+import {
+  Text,
+  useTheme,
+  Card,
+  Chip,
+  Button,
+  Divider,
+  IconButton,
+} from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useAppSelector } from '../../stores/hooks';
 import { getMarkedDates } from '../../services/streakService';
 import { format, parseISO } from 'date-fns';
+import { Journal } from '../../types';
 
 const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -13,14 +22,19 @@ const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const currentStreak = useAppSelector(state => state.journals.currentStreak);
 
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDateFormatted, setSelectedDateFormatted] = useState<string>('');
   const [markedDates, setMarkedDates] = useState<any>({});
+  const [journalsForSelectedDate, setJournalsForSelectedDate] = useState<Journal[]>([]);
 
   useEffect(() => {
     // Get marked dates from journals
     const marked = getMarkedDates(journals);
-    
-    // Add today's date
+
+    // Add today's date as selected by default
     const today = format(new Date(), 'yyyy-MM-dd');
+    setSelectedDate(today);
+    setSelectedDateFormatted(format(new Date(), 'EEEE, MMMM dd, yyyy'));
+    
     setMarkedDates({
       ...marked,
       [today]: {
@@ -29,121 +43,186 @@ const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         selectedColor: theme.colors.primary,
       },
     });
+
+    // Load journals for today
+    loadJournalsForDate(today);
   }, [journals, theme]);
 
-  const handleDayPress = (day: DateData) => {
-    const dateKey = day.dateString;
-    setSelectedDate(dateKey);
-
-    // Find journals for this date
+  const loadJournalsForDate = (dateKey: string) => {
     const journalsForDate = journals.filter(j => {
       const journalDate = format(parseISO(j.date), 'yyyy-MM-dd');
       return journalDate === dateKey;
     });
-
-    if (journalsForDate.length === 1) {
-      // Navigate to journal detail
-      navigation.navigate('JournalDetail', {
-        journalId: journalsForDate[0].id,
-      });
-    } else if (journalsForDate.length > 1) {
-      // Multiple entries - show list (could navigate to filtered list)
-      navigation.navigate('JournalList');
-    } else {
-      // No entry - create new one for this date
-      navigation.navigate('JournalEditor');
-    }
+    setJournalsForSelectedDate(journalsForDate);
   };
 
-  const getJournalsCountForDate = (dateString: string): number => {
-    return journals.filter(j => {
-      const journalDate = format(parseISO(j.date), 'yyyy-MM-dd');
-      return journalDate === dateString;
-    }).length;
+  const handleDayPress = (day: DateData) => {
+    const dateKey = day.dateString;
+    setSelectedDate(dateKey);
+    setSelectedDateFormatted(format(parseISO(dateKey), 'EEEE, MMMM dd, yyyy'));
+
+    // Update marked dates to show new selection
+    const marked = getMarkedDates(journals);
+    setMarkedDates({
+      ...marked,
+      [dateKey]: {
+        ...marked[dateKey],
+        selected: true,
+        selectedColor: theme.colors.primary,
+        selectedTextColor: theme.colors.onPrimary,
+      },
+    });
+
+    // Load journals for selected date
+    loadJournalsForDate(dateKey);
+  };
+
+  const handleCreateJournal = () => {
+    // Navigate to editor with the selected date
+    navigation.navigate('JournalEditor', { selectedDate });
+  };
+
+  const renderJournalItem = ({ item }: { item: Journal }) => {
+    const time = format(parseISO(item.date), 'hh:mm a');
+    const hasImages = item.images && item.images.length > 0;
+
+    return (
+      <Card
+        style={styles.journalCard}
+        onPress={() => navigation.navigate('JournalDetail', { journalId: item.id })}
+      >
+        <Card.Content>
+          <View style={styles.journalHeader}>
+            <View style={styles.journalTitleRow}>
+              {item.title && (
+                <Text variant="titleMedium" style={styles.journalTitle}>
+                  {item.title}
+                </Text>
+              )}
+              <Chip icon="clock-outline" compact style={styles.timeChip}>
+                {time}
+              </Chip>
+            </View>
+            <IconButton
+              icon="chevron-right"
+              size={20}
+              onPress={() => navigation.navigate('JournalDetail', { journalId: item.id })}
+            />
+          </View>
+          <Text variant="bodyMedium" numberOfLines={2} style={styles.journalPreview}>
+            {item.text}
+          </Text>
+          {hasImages && (
+            <Chip icon="image" compact style={styles.imageIndicator}>
+              {item.images!.length} {item.images!.length === 1 ? 'image' : 'images'}
+            </Chip>
+          )}
+        </Card.Content>
+      </Card>
+    );
   };
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      <ScrollView>
-        {/* Streak Stats */}
-        <Card style={styles.statsCard}>
-          <Card.Content>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text variant="displaySmall" style={styles.statNumber}>
-                  {currentStreak}
-                </Text>
-                <Text variant="bodyMedium">🔥 Current Streak</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text variant="displaySmall" style={styles.statNumber}>
-                  {journals.length}
-                </Text>
-                <Text variant="bodyMedium">📝 Total Entries</Text>
-              </View>
+      {/* Streak Stats */}
+      <Card style={styles.statsCard}>
+        <Card.Content>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text variant="displaySmall" style={styles.statNumber}>
+                {currentStreak}
+              </Text>
+              <Text variant="bodyMedium">🔥 Current Streak</Text>
             </View>
-          </Card.Content>
-        </Card>
+            <View style={styles.statItem}>
+              <Text variant="displaySmall" style={styles.statNumber}>
+                {journals.length}
+              </Text>
+              <Text variant="bodyMedium">📝 Total Entries</Text>
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
 
-        {/* Calendar */}
-        <Card style={styles.calendarCard}>
-          <Card.Content>
-            <Calendar
-              markingType="dot"
-              markedDates={markedDates}
-              onDayPress={handleDayPress}
-              theme={{
-                backgroundColor: theme.colors.surface,
-                calendarBackground: theme.colors.surface,
-                textSectionTitleColor: theme.colors.onSurface,
-                selectedDayBackgroundColor: theme.colors.primary,
-                selectedDayTextColor: theme.colors.onPrimary,
-                todayTextColor: theme.colors.primary,
-                dayTextColor: theme.colors.onSurface,
-                textDisabledColor: theme.colors.outline,
-                dotColor: theme.colors.primary,
-                selectedDotColor: theme.colors.onPrimary,
-                arrowColor: theme.colors.primary,
-                monthTextColor: theme.colors.onSurface,
-                indicatorColor: theme.colors.primary,
-                textDayFontWeight: '400',
-                textMonthFontWeight: 'bold',
-                textDayHeaderFontWeight: '600',
-                textDayFontSize: 16,
-                textMonthFontSize: 18,
-                textDayHeaderFontSize: 14,
-              }}
-            />
-          </Card.Content>
-        </Card>
+      {/* Calendar */}
+      <Card style={styles.calendarCard}>
+        <Card.Content>
+          <Calendar
+            markingType="dot"
+            markedDates={markedDates}
+            onDayPress={handleDayPress}
+            theme={{
+              backgroundColor: theme.colors.surface,
+              calendarBackground: theme.colors.surface,
+              textSectionTitleColor: theme.colors.onSurface,
+              selectedDayBackgroundColor: theme.colors.primary,
+              selectedDayTextColor: theme.colors.onPrimary,
+              todayTextColor: theme.colors.primary,
+              dayTextColor: theme.colors.onSurface,
+              textDisabledColor: theme.colors.outline,
+              dotColor: theme.colors.primary,
+              selectedDotColor: theme.colors.onPrimary,
+              arrowColor: theme.colors.primary,
+              monthTextColor: theme.colors.onSurface,
+              indicatorColor: theme.colors.primary,
+              textDayFontWeight: '400',
+              textMonthFontWeight: 'bold',
+              textDayHeaderFontWeight: '600',
+              textDayFontSize: 16,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 14,
+            }}
+          />
+        </Card.Content>
+      </Card>
 
-        {/* Instructions */}
-        <Card style={styles.infoCard}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.infoTitle}>
-              How to use Calendar
+      {/* Selected Date Section */}
+      <View style={styles.selectedDateSection}>
+        <View style={styles.selectedDateHeader}>
+          <View>
+            <Text variant="titleLarge" style={styles.selectedDateTitle}>
+              {selectedDateFormatted}
             </Text>
-            <View style={styles.infoRow}>
-              <Chip icon="circle" compact style={styles.infoChip}>
-                Blue dot
-              </Chip>
-              <Text variant="bodyMedium">= Has journal entry</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text variant="bodyMedium">
-                • Tap any date to view or create journal entry
+            <Text variant="bodySmall" style={styles.entryCount}>
+              {journalsForSelectedDate.length}{' '}
+              {journalsForSelectedDate.length === 1 ? 'entry' : 'entries'}
+            </Text>
+          </View>
+          <Button
+            mode="contained"
+            icon="plus"
+            onPress={handleCreateJournal}
+            compact
+          >
+            New Entry
+          </Button>
+        </View>
+
+        <Divider style={styles.divider} />
+
+        {/* Journal List for Selected Date */}
+        {journalsForSelectedDate.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <Card.Content style={styles.emptyContent}>
+              <Text variant="bodyLarge" style={styles.emptyText}>
+                No entries for this day
               </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text variant="bodyMedium">
-                • Keep your streak alive by writing daily!
+              <Text variant="bodySmall" style={styles.emptySubtext}>
+                Tap "New Entry" to start writing
               </Text>
-            </View>
-          </Card.Content>
-        </Card>
-      </ScrollView>
+            </Card.Content>
+          </Card>
+        ) : (
+          <FlatList
+            data={journalsForSelectedDate}
+            renderItem={renderJournalItem}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.journalList}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 };
@@ -168,25 +247,75 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   calendarCard: {
-    margin: 16,
+    marginHorizontal: 16,
     marginVertical: 8,
   },
-  infoCard: {
-    margin: 16,
-    marginTop: 8,
-    marginBottom: 32,
+  selectedDateSection: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
-  infoTitle: {
+  selectedDateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
+  },
+  selectedDateTitle: {
     fontWeight: 'bold',
   },
-  infoRow: {
+  entryCount: {
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  divider: {
+    marginBottom: 12,
+  },
+  journalList: {
+    paddingBottom: 16,
+  },
+  journalCard: {
+    marginBottom: 12,
+  },
+  journalHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  infoChip: {
+  journalTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  journalTitle: {
+    fontWeight: 'bold',
     marginRight: 8,
+  },
+  timeChip: {
+    marginRight: 8,
+  },
+  journalPreview: {
+    marginBottom: 8,
+    opacity: 0.8,
+  },
+  imageIndicator: {
+    alignSelf: 'flex-start',
+  },
+  emptyCard: {
+    marginTop: 24,
+  },
+  emptyContent: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
+    marginBottom: 8,
+    opacity: 0.7,
+  },
+  emptySubtext: {
+    opacity: 0.5,
   },
 });
 
