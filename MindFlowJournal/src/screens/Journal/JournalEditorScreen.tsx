@@ -189,20 +189,21 @@ const handleSave = async (showAlert: boolean = true) => {
       existingJournal = await getJournal(journalId, encryptionKey);
     }
 
-    // FIX: Properly format selectedDate if provided
+    // FIX: Properly format selectedDate with local timezone
     let journalDate = now;
     if (existingJournal?.date) {
       journalDate = existingJournal.date;
     } else if (selectedDate) {
-      // Convert selectedDate (YYYY-MM-DD) to ISO string with current time
+      // FIXED: Use noon time to avoid timezone issues
       const [year, month, day] = selectedDate.split('-').map(Number);
-      const dateObj = new Date(year, month - 1, day);
+      const dateObj = new Date(year, month - 1, day, 12, 0, 0); // Set to noon
       journalDate = dateObj.toISOString();
+      console.log('Creating journal for selected date:', selectedDate, '-> ISO:', journalDate);
     }
 
     const journal: Journal = {
       id: journalId || uuidv4(),
-      date: journalDate, // Use the properly formatted date
+      date: journalDate,
       createdAt: existingJournal?.createdAt || now,
       updatedAt: now,
       title: title.trim() || undefined,
@@ -234,6 +235,7 @@ const handleSave = async (showAlert: boolean = true) => {
     setIsSaving(false);
   }
 };
+
 
   const handleBack = async () => {
     if (text.trim()) {

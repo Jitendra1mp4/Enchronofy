@@ -112,14 +112,18 @@ export const getMarkedDates = (
 
   journals.forEach(journal => {
     try {
-      const dateKey = startOfDay(parseISO(journal.date))
-        .toISOString()
-        .split('T')[0];
+      // Use local date to avoid timezone offset issues
+      const date = new Date(journal.date);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+      
       marked[dateKey] = {
         marked: true,
         dotColor: '#6200EE',
       };
-      console.log('Marked date:', dateKey);
+      console.log('Marked date:', dateKey, 'from journal date:', journal.date);
     } catch (error) {
       console.error('Error parsing journal date:', journal.date, error);
     }

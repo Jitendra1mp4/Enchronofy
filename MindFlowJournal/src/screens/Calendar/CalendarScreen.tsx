@@ -69,14 +69,22 @@ const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     });
   };
 
-  const loadJournalsForDate = (dateKey: string) => {
-    const journalsForDate = journals.filter(j => {
-      const journalDate = format(parseISO(j.date), 'yyyy-MM-dd');
-      return journalDate === dateKey;
-    });
-    console.log(`Journals for ${dateKey}:`, journalsForDate.length);
-    setJournalsForSelectedDate(journalsForDate);
-  };
+const loadJournalsForDate = (dateKey: string) => {
+  const journalsForDate = journals.filter(j => {
+    // Use local date comparison
+    const date = new Date(j.date);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const journalDateKey = `${year}-${month}-${day}`;
+    
+    console.log('Comparing:', journalDateKey, 'with', dateKey);
+    return journalDateKey === dateKey;
+  });
+  console.log(`Journals for ${dateKey}:`, journalsForDate.length);
+  setJournalsForSelectedDate(journalsForDate);
+};
+
 
   const handleDayPress = (day: DateData) => {
     const dateKey = day.dateString;
@@ -282,11 +290,13 @@ const styles = StyleSheet.create({
   selectedDateHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start', // CHANGED from 'center' to 'flex-start'
     marginBottom: 12,
   },
   selectedDateTitle: {
     fontWeight: 'bold',
+    flex: 1, // ADD THIS - allows text to take available space
+    marginRight: 8, // ADD THIS - spacing before button
   },
   entryCount: {
     opacity: 0.7,
