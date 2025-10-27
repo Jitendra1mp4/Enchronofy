@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Journal } from '../../types';
-import { calculateCurrentStreak } from '../../services/streakService';
+import { calculateCurrentStreak, calculateLongestStreak } from '../../services/streakService';
 
 interface JournalsState {
   journals: Journal[];
@@ -22,26 +22,30 @@ const journalsSlice = createSlice({
   reducers: {
     setJournals: (state, action: PayloadAction<Journal[]>) => {
       state.journals = action.payload;
-      // Auto-calculate streak when journals are loaded
+      // Auto-calculate streaks when journals are loaded
       state.currentStreak = calculateCurrentStreak(action.payload);
+      state.longestStreak = calculateLongestStreak(action.payload);
     },
     addJournal: (state, action: PayloadAction<Journal>) => {
       state.journals.push(action.payload);
-      // Recalculate streak
+      // Recalculate streaks
       state.currentStreak = calculateCurrentStreak(state.journals);
+      state.longestStreak = calculateLongestStreak(state.journals);
     },
     updateJournal: (state, action: PayloadAction<Journal>) => {
       const index = state.journals.findIndex(j => j.id === action.payload.id);
       if (index !== -1) {
         state.journals[index] = action.payload;
       }
-      // Recalculate streak
+      // Recalculate streaks
       state.currentStreak = calculateCurrentStreak(state.journals);
+      state.longestStreak = calculateLongestStreak(state.journals);
     },
     deleteJournal: (state, action: PayloadAction<string>) => {
       state.journals = state.journals.filter(j => j.id !== action.payload);
-      // Recalculate streak
+      // Recalculate streaks
       state.currentStreak = calculateCurrentStreak(state.journals);
+      state.longestStreak = calculateLongestStreak(state.journals);
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;

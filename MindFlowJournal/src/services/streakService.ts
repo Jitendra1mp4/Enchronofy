@@ -17,24 +17,24 @@ export const calculateCurrentStreak = (journals: Journal[]): number => {
     new Set(
       sortedJournals.map(j => {
         const dateStr = startOfDay(parseISO(j.date)).toISOString();
-        console.log('Journal date:', j.date, '-> Start of day:', dateStr); // DEBUG
+        console.log('Journal date:', j.date, '-> Start of day:', dateStr);
         return dateStr;
       })
     )
   ).map(dateStr => parseISO(dateStr));
 
-  console.log('Unique dates count:', uniqueDates.length); // DEBUG
+  console.log('Unique dates count:', uniqueDates.length);
 
   const today = startOfDay(new Date());
   const mostRecentEntry = startOfDay(parseISO(sortedJournals[0].date));
 
   // Check if the most recent entry is today or yesterday
   const daysDiff = differenceInDays(today, mostRecentEntry);
-  console.log('Days difference from today:', daysDiff); // DEBUG
-  
+  console.log('Days difference from today:', daysDiff);
+
   if (daysDiff > 1) {
     // Streak is broken
-    console.log('Streak broken - more than 1 day gap'); // DEBUG
+    console.log('Streak broken - more than 1 day gap');
     return 0;
   }
 
@@ -45,7 +45,7 @@ export const calculateCurrentStreak = (journals: Journal[]): number => {
     const previousDate = uniqueDates[i - 1];
     const diff = differenceInDays(previousDate, currentDate);
 
-    console.log(`Comparing day ${i}: diff = ${diff}`); // DEBUG
+    console.log(`Comparing day ${i}: diff = ${diff}`);
 
     if (diff === 1) {
       streak++;
@@ -54,8 +54,52 @@ export const calculateCurrentStreak = (journals: Journal[]): number => {
     }
   }
 
-  console.log('Final streak:', streak); // DEBUG
+  console.log('Final current streak:', streak);
   return streak;
+};
+
+/**
+ * Calculate the longest streak ever achieved
+ */
+export const calculateLongestStreak = (journals: Journal[]): number => {
+  if (journals.length === 0) return 0;
+
+  // Sort journals by date (oldest first for longest streak calculation)
+  const sortedJournals = [...journals].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+
+  // Get unique dates
+  const uniqueDates = Array.from(
+    new Set(
+      sortedJournals.map(j => startOfDay(parseISO(j.date)).toISOString())
+    )
+  ).map(dateStr => parseISO(dateStr));
+
+  if (uniqueDates.length === 0) return 0;
+  if (uniqueDates.length === 1) return 1;
+
+  let longestStreak = 1;
+  let currentStreakCount = 1;
+
+  // Iterate through dates and find longest consecutive sequence
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const currentDate = uniqueDates[i];
+    const previousDate = uniqueDates[i - 1];
+    const diff = differenceInDays(currentDate, previousDate);
+
+    if (diff === 1) {
+      // Consecutive day
+      currentStreakCount++;
+      longestStreak = Math.max(longestStreak, currentStreakCount);
+    } else {
+      // Streak broken, reset counter
+      currentStreakCount = 1;
+    }
+  }
+
+  console.log('Longest streak ever:', longestStreak);
+  return longestStreak;
 };
 
 /**
@@ -75,12 +119,12 @@ export const getMarkedDates = (
         marked: true,
         dotColor: '#6200EE',
       };
-      console.log('Marked date:', dateKey); // DEBUG
+      console.log('Marked date:', dateKey);
     } catch (error) {
       console.error('Error parsing journal date:', journal.date, error);
     }
   });
 
-  console.log('Total marked dates:', Object.keys(marked).length); // DEBUG
+  console.log('Total marked dates:', Object.keys(marked).length);
   return marked;
 };

@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Animated } from 'react-native';
 import { Card, Text, Button, useTheme, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../stores/hooks';
-import { setJournals } from '../../stores/slices/journalsSlice';
+import { setJournals, setLongestStreak } from '../../stores/slices/journalsSlice'; // UPDATED
 import { useAuth } from '../../utils/authContext';
 import { listJournals } from '../../services/storageService';
-import { calculateLongestStreak } from '../../services/streakService';
+import { calculateLongestStreak } from '../../services/streakService'; // MAKE SURE THIS EXISTS
 import { format, subDays } from 'date-fns';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -15,6 +15,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { encryptionKey } = useAuth();
 
   const currentStreak = useAppSelector(state => state.journals.currentStreak);
+  const longestStreak = useAppSelector(state => state.journals.longestStreak); // GET FROM REDUX
   const journals = useAppSelector(state => state.journals.journals);
 
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -43,12 +44,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       const loadedJournals = await listJournals(encryptionKey);
       dispatch(setJournals(loadedJournals));
+      
+      // Calculate and store longest streak
+      const longest = calculateLongestStreak(loadedJournals);
+      dispatch(setLongestStreak(longest));
     } catch (error) {
       console.error('Error loading journals:', error);
     }
   };
-
-  const longestStreak = calculateLongestStreak(journals);
 
   // Get last 3 days of entries
   const getLast3DaysJournals = () => {
