@@ -5,7 +5,9 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
+     "android": "expo start --android",
+    "prebuild": "npx expo prebuild --platform android",
+    "build:android": "cd android && ./gradlew assembleRelease",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",

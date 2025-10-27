@@ -1,17 +1,19 @@
 {
   "expo": {
-    "name": "MindFlowJournal",
-    "slug": "MindFlowJournal",
+    "name": "D Journal HUB",
+    "slug": "D-Journal-HUB",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mindflowjournal",
+    "scheme": "djournalhub",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "pro.corelogik.djournalhub",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
