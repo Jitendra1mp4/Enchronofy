@@ -168,61 +168,72 @@ const addImage = async (uri: string) => {
     setImageBase64List(imageBase64List.filter((_, i) => i !== index));
   };
 
-  const handleSave = async (showAlert: boolean = true) => {
-    if (!text.trim()) {
-      Alert.alert('Error', 'Please write something before saving');
-      return false;
+const handleSave = async (showAlert: boolean = true) => {
+  if (!text.trim()) {
+    Alert.alert('Error', 'Please write something before saving');
+    return false;
+  }
+
+  if (!encryptionKey) {
+    Alert.alert('Error', 'Encryption key not found. Please log in again.');
+    return false;
+  }
+
+  setIsSaving(true);
+
+  try {
+    const now = new Date().toISOString();
+    let existingJournal: Journal | null = null;
+
+    if (journalId) {
+      existingJournal = await getJournal(journalId, encryptionKey);
     }
 
-    if (!encryptionKey) {
-      Alert.alert('Error', 'Encryption key not found. Please log in again.');
-      return false;
+    // FIX: Properly format selectedDate if provided
+    let journalDate = now;
+    if (existingJournal?.date) {
+      journalDate = existingJournal.date;
+    } else if (selectedDate) {
+      // Convert selectedDate (YYYY-MM-DD) to ISO string with current time
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      journalDate = dateObj.toISOString();
     }
 
-    setIsSaving(true);
+    const journal: Journal = {
+      id: journalId || uuidv4(),
+      date: journalDate, // Use the properly formatted date
+      createdAt: existingJournal?.createdAt || now,
+      updatedAt: now,
+      title: title.trim() || undefined,
+      text: text.trim(),
+      mood: undefined,
+      images: imageBase64List.length > 0 ? imageBase64List : undefined,
+    };
 
-    try {
-      const now = new Date().toISOString();
-      let existingJournal: Journal | null = null;
+    await saveJournal(journal, encryptionKey);
 
-      if (journalId) {
-        existingJournal = await getJournal(journalId, encryptionKey);
-      }
-
-      const journal: Journal = {
-        id: journalId || uuidv4(),
-         date: existingJournal?.date || selectedDate || now,
-        createdAt: existingJournal?.createdAt || now,
-        updatedAt: now,
-        title: title.trim() || undefined,
-        text: text.trim(),
-        mood: undefined,
-        images: imageBase64List.length > 0 ? imageBase64List : undefined,
-      };
-
-      await saveJournal(journal, encryptionKey);
-
-      if (isEditing) {
-        dispatch(updateJournal(journal));
-      } else {
-        dispatch(addJournal(journal));
-      }
-
-      if (showAlert) {
-        Alert.alert('Success', 'Journal entry saved!', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error saving journal:', error);
-      Alert.alert('Error', 'Failed to save journal entry');
-      return false;
-    } finally {
-      setIsSaving(false);
+    if (isEditing) {
+      dispatch(updateJournal(journal));
+    } else {
+      dispatch(addJournal(journal));
     }
-  };
+
+    if (showAlert) {
+      Alert.alert('Success', 'Journal entry saved!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error saving journal:', error);
+    Alert.alert('Error', 'Failed to save journal entry');
+    return false;
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const handleBack = async () => {
     if (text.trim()) {

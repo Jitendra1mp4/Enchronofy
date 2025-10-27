@@ -15,17 +15,26 @@ export const calculateCurrentStreak = (journals: Journal[]): number => {
   // Get unique dates (in case multiple entries on same day)
   const uniqueDates = Array.from(
     new Set(
-      sortedJournals.map(j => startOfDay(parseISO(j.date)).toISOString())
+      sortedJournals.map(j => {
+        const dateStr = startOfDay(parseISO(j.date)).toISOString();
+        console.log('Journal date:', j.date, '-> Start of day:', dateStr); // DEBUG
+        return dateStr;
+      })
     )
   ).map(dateStr => parseISO(dateStr));
+
+  console.log('Unique dates count:', uniqueDates.length); // DEBUG
 
   const today = startOfDay(new Date());
   const mostRecentEntry = startOfDay(parseISO(sortedJournals[0].date));
 
   // Check if the most recent entry is today or yesterday
   const daysDiff = differenceInDays(today, mostRecentEntry);
+  console.log('Days difference from today:', daysDiff); // DEBUG
+  
   if (daysDiff > 1) {
     // Streak is broken
+    console.log('Streak broken - more than 1 day gap'); // DEBUG
     return 0;
   }
 
@@ -36,6 +45,8 @@ export const calculateCurrentStreak = (journals: Journal[]): number => {
     const previousDate = uniqueDates[i - 1];
     const diff = differenceInDays(previousDate, currentDate);
 
+    console.log(`Comparing day ${i}: diff = ${diff}`); // DEBUG
+
     if (diff === 1) {
       streak++;
     } else {
@@ -43,44 +54,8 @@ export const calculateCurrentStreak = (journals: Journal[]): number => {
     }
   }
 
+  console.log('Final streak:', streak); // DEBUG
   return streak;
-};
-
-/**
- * Get the longest streak
- */
-export const calculateLongestStreak = (journals: Journal[]): number => {
-  if (journals.length === 0) return 0;
-
-  // Sort journals by date
-  const sortedJournals = [...journals].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-
-  // Get unique dates
-  const uniqueDates = Array.from(
-    new Set(
-      sortedJournals.map(j => startOfDay(parseISO(j.date)).toISOString())
-    )
-  ).map(dateStr => parseISO(dateStr));
-
-  let longestStreak = 1;
-  let currentStreak = 1;
-
-  for (let i = 1; i < uniqueDates.length; i++) {
-    const currentDate = uniqueDates[i];
-    const previousDate = uniqueDates[i - 1];
-    const diff = differenceInDays(currentDate, previousDate);
-
-    if (diff === 1) {
-      currentStreak++;
-      longestStreak = Math.max(longestStreak, currentStreak);
-    } else {
-      currentStreak = 1;
-    }
-  }
-
-  return longestStreak;
 };
 
 /**
@@ -92,14 +67,20 @@ export const getMarkedDates = (
   const marked: { [key: string]: { marked: boolean; dotColor: string } } = {};
 
   journals.forEach(journal => {
-    const dateKey = startOfDay(parseISO(journal.date))
-      .toISOString()
-      .split('T')[0];
-    marked[dateKey] = {
-      marked: true,
-      dotColor: '#6200EE',
-    };
+    try {
+      const dateKey = startOfDay(parseISO(journal.date))
+        .toISOString()
+        .split('T')[0];
+      marked[dateKey] = {
+        marked: true,
+        dotColor: '#6200EE',
+      };
+      console.log('Marked date:', dateKey); // DEBUG
+    } catch (error) {
+      console.error('Error parsing journal date:', journal.date, error);
+    }
   });
 
+  console.log('Total marked dates:', Object.keys(marked).length); // DEBUG
   return marked;
 };

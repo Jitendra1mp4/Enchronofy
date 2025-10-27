@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, FlatList } from 'react-native';
+import { View, StyleSheet, FlatList } from 'react-native';
 import {
   Text,
   useTheme,
@@ -11,6 +11,7 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAppSelector } from '../../stores/hooks';
 import { getMarkedDates } from '../../services/streakService';
 import { format, parseISO } from 'date-fns';
@@ -26,38 +27,61 @@ const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [markedDates, setMarkedDates] = useState<any>({});
   const [journalsForSelectedDate, setJournalsForSelectedDate] = useState<Journal[]>([]);
 
+  // Initialize on mount
   useEffect(() => {
-    // Get marked dates from journals
-    const marked = getMarkedDates(journals);
+    initializeCalendar();
+  }, []);
 
-    // Add today's date as selected by default
+  // Refresh when journals change OR when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Calendar screen focused - refreshing data');
+      updateMarkedDates();
+      if (selectedDate) {
+        loadJournalsForDate(selectedDate);
+      }
+    }, [journals, selectedDate])
+  );
+
+  const initializeCalendar = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     setSelectedDate(today);
     setSelectedDateFormatted(format(new Date(), 'EEEE, MMMM dd, yyyy'));
-    
+    updateMarkedDates();
+    loadJournalsForDate(today);
+  };
+
+  const updateMarkedDates = () => {
+    const marked = getMarkedDates(journals);
+    const currentSelected = selectedDate || format(new Date(), 'yyyy-MM-dd');
+
+    console.log('Updating marked dates. Total journals:', journals.length);
+    console.log('Marked dates:', Object.keys(marked));
+
     setMarkedDates({
       ...marked,
-      [today]: {
-        ...marked[today],
+      [currentSelected]: {
+        ...marked[currentSelected],
         selected: true,
         selectedColor: theme.colors.primary,
+        selectedTextColor: theme.colors.onPrimary,
       },
     });
-
-    // Load journals for today
-    loadJournalsForDate(today);
-  }, [journals, theme]);
+  };
 
   const loadJournalsForDate = (dateKey: string) => {
     const journalsForDate = journals.filter(j => {
       const journalDate = format(parseISO(j.date), 'yyyy-MM-dd');
       return journalDate === dateKey;
     });
+    console.log(`Journals for ${dateKey}:`, journalsForDate.length);
     setJournalsForSelectedDate(journalsForDate);
   };
 
   const handleDayPress = (day: DateData) => {
     const dateKey = day.dateString;
+    console.log('Day pressed:', dateKey);
+    
     setSelectedDate(dateKey);
     setSelectedDateFormatted(format(parseISO(dateKey), 'EEEE, MMMM dd, yyyy'));
 
@@ -78,7 +102,7 @@ const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleCreateJournal = () => {
-    // Navigate to editor with the selected date
+    console.log('Creating journal for date:', selectedDate);
     navigation.navigate('JournalEditor', { selectedDate });
   };
 
