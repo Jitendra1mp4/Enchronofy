@@ -1,28 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { List, Switch, useTheme, Button, TextInput } from 'react-native-paper';
+import { List, Switch, useTheme, Button, TextInput, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppSelector, useAppDispatch } from '../../stores/hooks';
+import { Text } from 'react-native-paper';
+
 import {
   setTheme,
   setNotificationsEnabled,
   setNotificationTime,
 } from '../../stores/slices/settingsSlice';
+import { setSalt, logout } from '../../stores/slices/authSlice';
+import { useAuth } from '../../utils/authContext';
 import {
   requestNotificationPermissions,
   scheduleDailyReminder,
   cancelAllNotifications,
 } from '../../services/notificationService';
+import { deriveKeyFromPassword } from '../../services/encryptionService';
+import {
+  getSalt,
+  verifyPassword,
+  reEncryptAllData,
+  saveSalt,
+  saveVerificationToken,
+} from '../../services/storageService';
 import { Alert } from '../../utils/alert';
 
-const SettingsScreen: React.FC = () => {
+const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
+  const { encryptionKey, setEncryptionKey } = useAuth();
   const settings = useAppSelector(state => state.settings);
 
   const [timeHour, setTimeHour] = useState('20');
   const [timeMinute, setTimeMinute] = useState('00');
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // Password change state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     // Parse stored time
@@ -91,6 +111,90 @@ const SettingsScreen: React.FC = () => {
     }
 
     setShowTimePicker(false);
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'New password must be at least 8 characters');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      if (!encryptionKey) {
+        Alert.alert('Error', 'Not authenticated');
+        setIsChangingPassword(false);
+        return;
+      }
+
+      // Verify current password
+      const salt = await getSalt();
+      if (!salt) {
+        Alert.alert('Error', 'No account found');
+        setIsChangingPassword(false);
+        return;
+      }
+
+      const { key: currentKey } = deriveKeyFromPassword(currentPassword, salt);
+      const isValid = await verifyPassword(currentKey);
+
+      if (!isValid) {
+        Alert.alert('Error', 'Current password is incorrect');
+        setIsChangingPassword(false);
+        return;
+      }
+
+      // Derive new key
+      const { key: newKey, salt: newSalt } = deriveKeyFromPassword(newPassword);
+
+      // Re-encrypt all data
+      await reEncryptAllData(currentKey, newKey);
+      await saveSalt(newSalt);
+      await saveVerificationToken(newKey);
+
+      // Update auth
+      setEncryptionKey(newKey);
+      dispatch(setSalt(newSalt));
+
+      Alert.alert('Success', 'Password changed successfully!');
+      setShowPasswordDialog(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (error) {
+      console.error('Password change error:', error);
+      Alert.alert('Error', 'Failed to change password. Please try again.');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(logout());
+            setEncryptionKey(null);
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Auth' }],
+            });
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -180,15 +284,15 @@ const SettingsScreen: React.FC = () => {
           <List.Subheader>Security</List.Subheader>
           <List.Item
             title="Change Password"
-            description="Coming in Sprint 6"
+            description="Update your master password"
             left={props => <List.Icon {...props} icon="lock" />}
-            disabled
+            onPress={() => setShowPasswordDialog(true)}
           />
           <List.Item
-            title="Security Questions"
-            description="Coming in Sprint 6"
-            left={props => <List.Icon {...props} icon="help-circle" />}
-            disabled
+            title="Logout"
+            description="Sign out of your account"
+            left={props => <List.Icon {...props} icon="logout" />}
+            onPress={handleLogout}
           />
         </List.Section>
 
@@ -196,11 +300,81 @@ const SettingsScreen: React.FC = () => {
           <List.Subheader>About</List.Subheader>
           <List.Item
             title="Version"
-            description="1.0.0 (Sprint 5)"
+            description="1.0.0 (Sprint 6)"
             left={props => <List.Icon {...props} icon="information" />}
+          />
+          <List.Item
+            title="Developer"
+            description="Built with React Native & Expo"
+            left={props => <List.Icon {...props} icon="code-tags" />}
           />
         </List.Section>
       </ScrollView>
+
+      {/* Password Change Dialog */}
+      {showPasswordDialog && (
+        <View style={styles.dialogOverlay}>
+          <Card style={styles.dialog}>
+            <Card.Content>
+              <Text variant="titleLarge" style={styles.dialogTitle}>
+                Change Password
+              </Text>
+
+              <TextInput
+                label="Current Password"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                mode="outlined"
+                style={styles.dialogInput}
+              />
+
+              <TextInput
+                label="New Password (min 8 characters)"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                mode="outlined"
+                style={styles.dialogInput}
+              />
+
+              <TextInput
+                label="Confirm New Password"
+                value={confirmNewPassword}
+                onChangeText={setConfirmNewPassword}
+                secureTextEntry
+                mode="outlined"
+                style={styles.dialogInput}
+              />
+
+              <View style={styles.dialogButtons}>
+                <Button
+                  mode="outlined"
+                  onPress={() => {
+                    setShowPasswordDialog(false);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                  }}
+                  disabled={isChangingPassword}
+                  style={styles.dialogButton}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={handleChangePassword}
+                  loading={isChangingPassword}
+                  disabled={isChangingPassword}
+                  style={styles.dialogButton}
+                >
+                  Change
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -220,6 +394,36 @@ const styles = StyleSheet.create({
   timeInput: {
     flex: 1,
     marginHorizontal: 4,
+  },
+  dialogOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dialog: {
+    width: '100%',
+    maxWidth: 400,
+  },
+  dialogTitle: {
+    marginBottom: 16,
+    fontWeight: 'bold',
+  },
+  dialogInput: {
+    marginBottom: 12,
+  },
+  dialogButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+  },
+  dialogButton: {
+    marginLeft: 8,
   },
 });
 
