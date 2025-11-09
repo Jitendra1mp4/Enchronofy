@@ -1,13 +1,9 @@
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  BackHandler,
   KeyboardAvoidingView,
   Platform,
-  Alert as RNAlert,
   ScrollView,
-  StyleSheet,
-  View,
+  StyleSheet
 } from 'react-native';
 import {
   Button,
@@ -15,7 +11,7 @@ import {
   TextInput,
   useTheme,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
 import { getJournal, saveJournal } from '../../services/storageService';
 import { useAppDispatch } from '../../stores/hooks';
@@ -31,47 +27,48 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const { encryptionKey } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const journalId = route.params?.journalId;
-  const isEditing = !!journalId;
+  const selectedDate = route.params?.selectedDate;
+  const isAlreadyExist = !!journalId;
 
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
+  const [imageBase64List, setImageBase64List] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+ 
+ const [isJournalCreated,setIsJournalCreated] = useState(isAlreadyExist) ;
+ const [generatedJournalId,setGeneratedJournalId] = useState(journalId) ;
+
 
   useEffect(() => {
-    if (isEditing) {
+    if (isJournalCreated) {
       loadJournal();
     }
   }, [journalId]);
 
-  // Remove default header back button
   useEffect(() => {
-    navigation.setOptions({ headerLeft: () => null });
-  }, [navigation]);
 
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        saveAndGoBack();
-        return true; // Prevent default behavior
-      };
-      BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
-    }, [title, text, encryptionKey])
-  );
+     const callSaveAsync = async () => {
+       await handleSave(false);
+     }
+     callSaveAsync() ;
+  }, [ encryptionKey, text, title, imageBase64List]);
 
   const loadJournal = async () => {
     if (!encryptionKey) return;
 
     setIsLoading(true);
     try {
-      const journal = await getJournal(journalId, encryptionKey);
+      const journal = await getJournal(generatedJournalId, encryptionKey);
       if (journal) {
         setTitle(journal.title || '');
         setText(journal.text);
+        if (journal.images && journal.images.length > 0) {
+          setImageBase64List(journal.images);
+        }
       }
     } catch (error) {
       console.error('Error loading journal:', error);
@@ -81,15 +78,17 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   };
 
-  const saveAndGoBack = async () => {
-    if (!text.trim()) {
-      // If empty, just go back without saving
-      navigation.goBack();
-      return;
+  const handleSave = async (showAlert = false) => {
+    if (!encryptionKey) {
+      if (showAlert)
+        Alert.alert('Error', 'Encryption key not found. Please login again.');
+      return false;
     }
 
-    if (isSaving) {
-      return;
+    if (!text.trim()) {
+      if (showAlert)
+        Alert.alert('Validation', 'Please write something before saving');
+      return false;
     }
 
     setIsSaving(true);
@@ -98,94 +97,111 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       const now = new Date().toISOString();
       let existingJournal: Journal | null = null;
 
-      if (journalId) {
-        existingJournal = await getJournal(journalId, encryptionKey);
+      if (generatedJournalId) {
+        existingJournal = await getJournal(generatedJournalId, encryptionKey);
+      }
+
+      let journalDate = now;
+      if (existingJournal?.date) {
+        journalDate = existingJournal.date;
+      } else if (selectedDate) {
+        const [year, month, day] = selectedDate.split('-').map(Number);
+        const dateObj = new Date(year, month - 1, day, 12);
+        journalDate = dateObj.toISOString();
       }
 
       const journal: Journal = {
-        id: journalId || uuidv4(),
-        date: existingJournal?.date || now,
+        id: generatedJournalId || uuidv4(),
+        date: journalDate,
         createdAt: existingJournal?.createdAt || now,
         updatedAt: now,
         title: title.trim() || undefined,
         text: text.trim(),
         mood: undefined,
-        images: undefined,
+        images: imageBase64List.length > 0 ? imageBase64List : undefined,
       };
 
       await saveJournal(journal, encryptionKey);
 
-      if (isEditing) {
+      if (isJournalCreated) {
         dispatch(updateJournal(journal));
       } else {
         dispatch(addJournal(journal));
       }
+      
+      if (!generatedJournalId)
+      setGeneratedJournalId(journal.id) ;
 
-      navigation.goBack();
+      setIsJournalCreated(true) ;
+     
+      if (showAlert) {
+        Alert.alert('Success', 'Journal entry saved!')
+      } 
+      return true;
     } catch (error) {
       console.error('Error saving journal:', error);
-      RNAlert.alert('Error', 'Failed to save journal entry');
+      if (showAlert) Alert.alert('Error', 'Failed to save journal entry');
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleSaveButton = async () => {
-    await saveAndGoBack();
-  };
-
   if (isLoading) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background }]}
       >
-        <View style={styles.loadingContainer}>
-          <HelperText type="info">Loading...</HelperText>
-        </View>
+        <HelperText type='info' style={styles.loadingText}>
+          Loading journal...
+        </HelperText>
       </SafeAreaView>
     );
   }
 
+
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.colors.background }]}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps='handled'
+        >
           <TextInput
-            label="Title (optional)"
+            label='Title (optional)'
             value={title}
             onChangeText={setTitle}
-            mode="outlined"
+            mode='outlined'
             style={styles.titleInput}
-            placeholder="Give your entry a title..."
+            placeholder='Title'
+            returnKeyType='next'
+            blurOnSubmit={false}
           />
 
           <TextInput
             label="What's on your mind?"
             value={text}
             onChangeText={setText}
-            mode="outlined"
+            mode='outlined'
             multiline
-            numberOfLines={15}
             style={styles.textInput}
-            placeholder="Start writing..."
+            autoFocus
           />
 
-          <View style={styles.buttonContainer}>
-            <Button
-              mode="contained"
-              onPress={handleSaveButton}
-              style={styles.saveButton}
-              disabled={isSaving || !text.trim()}
-              loading={isSaving}
-            >
-              Save & Back
-            </Button>
-          </View>
+          <Button
+            mode='contained'
+            onPress={async () => await handleSave(true)}
+            style={styles.saveButton}
+            loading={isSaving}
+            disabled={isSaving || !text.trim()}            
+          >
+            Save
+          </Button>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -200,27 +216,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    flexGrow: 1,
     padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   titleInput: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   textInput: {
-    marginBottom: 16,
-    minHeight: 200,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flex: 1,
+    minHeight: 400,
+    textAlignVertical: 'top',
   },
   saveButton: {
-    flex: 1,
-    maxWidth: 200,
+    marginTop: 20,
+  },
+  loadingText: {
+    marginTop: 30,
+    textAlign: 'center',
   },
 });
 
