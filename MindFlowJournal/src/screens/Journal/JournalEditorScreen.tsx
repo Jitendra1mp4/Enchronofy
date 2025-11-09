@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -41,7 +42,16 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
  
  const [isJournalCreated,setIsJournalCreated] = useState(isAlreadyExist) ;
  const [generatedJournalId,setGeneratedJournalId] = useState(journalId) ;
+ const [isJournalModified,setIsJournalModified] = useState(false) ;
 
+ BackHandler.addEventListener('hardwareBackPress', () => {
+  if (isJournalModified){
+    Alert.alert("Got it!","🔐Your Journal entry is saved securely")
+  }
+  navigation.goBack()
+  return true ;
+ }
+) 
 
   useEffect(() => {
     if (isJournalCreated) {
@@ -129,13 +139,14 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         dispatch(addJournal(journal));
       }
       
+      setIsJournalCreated(true) ;
+      setIsJournalModified(true) ;
+      
       if (!generatedJournalId)
       setGeneratedJournalId(journal.id) ;
-
-      setIsJournalCreated(true) ;
-     
+    
       if (showAlert) {
-        Alert.alert('Success', 'Journal entry saved!')
+        Alert.alert('Yep!', '🔐Your Journal entry is saved securely!')
       } 
       return true;
     } catch (error) {
@@ -200,7 +211,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             loading={isSaving}
             disabled={isSaving || !text.trim()}            
           >
-            Save
+            {isJournalCreated?"Saved":"Start typing, You don't need to save.."}
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>
