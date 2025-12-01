@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { TextInput, Button, Text, useTheme } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Button, Text, TextInput, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppDispatch } from '../../stores/hooks';
-import { setAuthenticated, setSalt } from '../../stores/slices/authSlice';
-import { useAuth } from '../../utils/authContext';
-import { deriveKeyFromPassword } from '../../services/encryptionService';
+import CryptoManager from '../../services/cryptoManager';
 import {
-  getSalt,
+  getVault,
   isFirstLaunch,
-  verifyPassword,
 } from '../../services/storageService';
+import { useAppDispatch } from '../../stores/hooks';
+import { setAuthenticated } from '../../stores/slices/authSlice';
 import { Alert } from '../../utils/alert';
+import { useAuth } from '../../utils/authContext';
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -41,37 +40,29 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      // 1. Get stored salt
-      const salt = await getSalt();
-      if (!salt) {
+      // 1. Retrieve vault from storage
+      const vault = await getVault();
+      if (!vault) {
         Alert.alert('Error', 'No account found. Please create an account.');
         setIsLoading(false);
         return;
       }
 
-      // 2. Derive key from password
-      const { key } = deriveKeyFromPassword(password, salt);
+      // 2. Unlock vault with password using CryptoManager
+      // This derives the password-based key and decrypts the Data Key (DK)
+      const { dk } = CryptoManager.unlockWithPassword(vault, password);
 
-      // 3. Verify password using verification token
-      const isValid = await verifyPassword(key);
-      if (!isValid) {
-        Alert.alert(
-          'Wrong Password',
-          'The password you entered is incorrect. Please try again or use password recovery.'
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // 4. Password is correct - update state
-      dispatch(setSalt(salt));
+      // 3. Password is correct - update state
       dispatch(setAuthenticated(true));
-      setEncryptionKey(key);
+      setEncryptionKey(dk);
 
       // Success! Navigation will happen automatically via RootNavigator
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', 'Failed to login. Please try again.');
+      Alert.alert(
+        'Wrong Password',
+        'The password you entered is incorrect. Please try again or use password recovery.'
+      );
       setIsLoading(false);
     }
   };

@@ -22,6 +22,16 @@ export const generateSalt = (): string => {
 
 
 /**
+ * Generate a random salt for key derivation
+ */
+export const generateDataKey = (): string => {
+  const data_key = CryptoJS.lib.WordArray.random(KEY_SIZE);
+  console.log(`data key: ${data_key.toString(CryptoJS.enc.Hex)}`)
+  return data_key.toString(CryptoJS.enc.Hex);
+};
+
+
+/**
  * Derive an encryption key from a password using PBKDF2
  * @param password - User's password
  * @param salt - Salt (if not provided, generates a new one)

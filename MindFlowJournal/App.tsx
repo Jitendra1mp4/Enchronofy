@@ -5,10 +5,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
 import { ThemeProvider } from './src/components/common/ThemeProvider';
 import { RootNavigator } from './src/navigation/RootNavigator';
+// import { initDatabase } from './src/services/storageService';
 import { store } from './src/stores';
 import { AuthProvider } from './src/utils/authContext';
 
 export default function App() {
+  // initDatabase();
   return (
     <ReduxProvider store={store}>
       <SafeAreaProvider>

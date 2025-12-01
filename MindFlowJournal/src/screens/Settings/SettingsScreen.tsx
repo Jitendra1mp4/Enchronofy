@@ -1,31 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { List, Switch, useTheme, Button, TextInput, Card } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Card, List, Switch, Text, TextInput, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppSelector, useAppDispatch } from '../../stores/hooks';
-import { Text } from 'react-native-paper';
+import { useAppDispatch, useAppSelector } from '../../stores/hooks';
 
-import {
-  setTheme,
-  setNotificationsEnabled,
-  setNotificationTime,
-} from '../../stores/slices/settingsSlice';
-import { setSalt, logout } from '../../stores/slices/authSlice';
-import { useAuth } from '../../utils/authContext';
-import {
-  requestNotificationPermissions,
-  scheduleDailyReminder,
-  cancelAllNotifications,
-} from '../../services/notificationService';
 import { deriveKeyFromPassword } from '../../services/encryptionService';
 import {
-  getSalt,
-  verifyPassword,
-  reEncryptAllData,
-  saveSalt,
-  saveVerificationToken,
+    cancelAllNotifications,
+    requestNotificationPermissions,
+    scheduleDailyReminder,
+} from '../../services/notificationService';
+import {
+    getMasterKeySalt,
+    reEncryptAllData,
+    saveMasterKeySalt,
+    saveVerificationToken,
+    verifyPassword,
 } from '../../services/storageService';
+import { logout, setSalt } from '../../stores/slices/authSlice';
+import {
+    setNotificationsEnabled,
+    setNotificationTime,
+    setTheme,
+} from '../../stores/slices/settingsSlice';
 import { Alert } from '../../utils/alert';
+import { useAuth } from '../../utils/authContext';
 
 const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -134,7 +133,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       }
 
       // Verify current password
-      const salt = await getSalt();
+      const salt = await getMasterKeySalt();
       if (!salt) {
         Alert.alert('Error', 'No account found');
         setIsChangingPassword(false);
@@ -155,7 +154,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       // Re-encrypt all data
       await reEncryptAllData(currentKey, newKey);
-      await saveSalt(newSalt);
+      await saveMasterKeySalt(newSalt);
       await saveVerificationToken(newKey);
 
       // Update auth
