@@ -46,32 +46,15 @@ export const imageUriToBase64 = async (uri: string): Promise<string> => {
       throw error;
     }
   } else {
-    // For mobile (iOS/Android) - use modern File API
+    // For mobile (iOS/Android) - use Expo FileSystem
     try {
-      const file = new FileSystem.File(uri);
-      const base64String = await file.text();
-      
-      // If text() doesn't work, try to read the file and convert
-      if (!base64String) {
-        // Fallback: read raw data and convert to base64
-        const fileContent = await fetch(uri).then(r => r.blob());
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            const base64 = result.split(',')[1] || result;
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(fileContent);
-        });
-      }
-      
-      return base64String;
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: "base64", // FileSystem.EncodingType.Base64,
+      });
+      return base64;
     } catch (error) {
       console.error('Error converting mobile image to base64:', error);
-      
-      // Ultimate fallback: fetch and convert as blob
+      // Fallback: try fetch method for data URIs or remote URLs
       try {
         const response = await fetch(uri);
         const blob = await response.blob();
@@ -95,8 +78,14 @@ export const imageUriToBase64 = async (uri: string): Promise<string> => {
 
 /**
  * Convert base64 to data URI for display
+ * Handles both raw base64 strings and strings that already have data URI prefix
  */
 export const base64ToDataUri = (base64: string): string => {
+  // If it already has a data URI prefix, return as-is
+  if (base64.startsWith('data:')) {
+    return base64;
+  }
+  // Otherwise, add the prefix
   return `data:image/jpeg;base64,${base64}`;
 };
 

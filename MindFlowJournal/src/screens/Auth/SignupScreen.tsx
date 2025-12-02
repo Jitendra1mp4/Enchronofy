@@ -161,6 +161,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           secureTextEntry={!showPassword}
           mode="outlined"
           style={styles.input}
+          disabled={isLoading}
           right={
             <TextInput.Icon
               icon={showPassword ? 'eye-off' : 'eye'}
@@ -180,6 +181,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           onChangeText={setConfirmPassword}
           secureTextEntry={!showConfirmPassword}
           mode="outlined"
+          disabled={isLoading}
           style={styles.input}
           right={
             <TextInput.Icon
@@ -229,10 +231,13 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               );
               return (
                 <View key={qId}>
-                  <Text variant="bodySmall" style={styles.questionText}>
+                  <Text variant="bodySmall" 
+                  
+                  style={styles.questionText}>
                     {question?.question}
                   </Text>
                   <TextInput
+                  disabled={isLoading}
                     value={answers[qId] || ''}
                     onChangeText={text =>
                       setAnswers({ ...answers, [qId]: text })

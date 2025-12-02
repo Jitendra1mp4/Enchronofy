@@ -53,6 +53,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const [isJournalModified, setIsJournalModified] = useState(false);
   const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [imageIds, setImageIds] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Request camera permissions on mount
   useEffect(() => {
@@ -84,7 +85,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
         setImageBase64List([...imageBase64List, base64]);
         setImageIds([...imageIds, uuidv4()]);
-        Alert.alert("Success", "Image added successfully!");
+        // Alert.alert("Success", "Image added successfully!");
       }
     } catch (error) {
       console.error("Error picking image:", error);
@@ -147,13 +148,21 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         setTitle(journal.title || "");
         setText(journal.text);
         if (journal.images && journal.images.length > 0) {
+          // console.log('Loading images in editor:', {
+          //   count: journal.images.length,
+          //   firstImagePreview: journal.images[0]?.substring(0, 50) || 'none',
+          // });
           setImageBase64List(journal.images);
           setImageIds(journal.images.map(() => uuidv4()));
+        } else {
+          // console.log('No images found in journal');
+          setImageBase64List([]);
+          setImageIds([]);
         }
       }
     } catch (error) {
-      console.error("Error loading journal:", error);
-      Alert.alert("Error", "Failed to load journal entry");
+      // console.error("Error loading journal:", error);
+      Alert.alert("Oops!", "Failed to load journal entry");
     } finally {
       setIsLoading(false);
     }
@@ -165,7 +174,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     
     if (!encryptionKey) {
       if (showAlert)
-        Alert.alert("Error", "Encryption key not found. Please login again.");
+        Alert.alert("Oops!", "Encryption key not found. Please login again.");
       return false;
     }
 
@@ -295,22 +304,37 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
                 showsHorizontalScrollIndicator={false}
                 style={styles.imageGallery}
               >
-                {imageBase64List.map((base64, index) => (
-                  <View key={imageIds[index] || `img-${index}`} style={styles.imageThumbnailContainer}>
-                    <Image
-                      source={{ uri: base64ToDataUri(base64) }}
-                      style={styles.imageThumbnail}
-                    />
-                    <TouchableOpacity
-                      onPress={() => handleRemoveImage(index)}
-                      style={styles.removeImageButton}
-                    >
-                      <HelperText type="error" style={styles.removeImageText}>
-                        ✕
-                      </HelperText>
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                {imageBase64List.map((base64, index) => {
+                  const imageUri = base64ToDataUri(base64);
+                  return (
+                    <View key={imageIds[index] || `img-${index}`} style={styles.imageThumbnailContainer}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => setSelectedImage(imageUri)}
+                      >
+                        <Image
+                          source={{ uri: imageUri }}
+                          style={styles.imageThumbnail}
+                          onError={(error) => {
+                            // console.error('Image load error in editor:', error.nativeEvent.error);
+                            console.log('Failed image URI preview:', imageUri.substring(0, 100));
+                          }}
+                          onLoad={() => {
+                            console.log('Image loaded successfully in editor:', index);
+                          }}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveImage(index)}
+                        style={styles.removeImageButton}
+                      >
+                        <HelperText type="error" style={styles.removeImageText}>
+                          ✕
+                        </HelperText>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
               </ScrollView>
             </View>
           )}
@@ -338,6 +362,31 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Full Screen Image Modal */}
+      {selectedImage && (
+        <View style={styles.fullscreenOverlay}>
+          <TouchableOpacity
+            style={styles.fullscreenBackdrop}
+            activeOpacity={1}
+            onPress={() => setSelectedImage(null)}
+          />
+          <View style={styles.fullscreenContent}>
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.fullscreenImage}
+              resizeMode="contain"
+            />
+            <Button
+              mode="contained-tonal"
+              style={styles.fullscreenCloseButton}
+              onPress={() => setSelectedImage(null)}
+            >
+              Close
+            </Button>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -407,6 +456,36 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 30,
     textAlign: "center",
+  },
+  fullscreenOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  fullscreenBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.9)",
+  },
+  fullscreenContent: {
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  fullscreenImage: {
+    width: "100%",
+    height: "80%",
+  },
+  fullscreenCloseButton: {
+    marginTop: 12,
   },
 });
 

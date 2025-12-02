@@ -7,9 +7,9 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SQLite from 'expo-sqlite';
+import APP_CONFIG from '../config/appConfig';
 import { Journal } from '../types';
 import { EncryptedNote } from '../types/crypto';
-import APP_CONFIG from '../config/appConfig';
 import CryptoManager from './cryptoManager';
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -182,7 +182,7 @@ export const saveJournal = async (
 ): Promise<void> => {
   try {
     if (!db) throw new Error('Database not initialized');
-    
+
     // Encrypt the note using CryptoManager
     const encryptedNote = CryptoManager.encryptNote(dk, journal.text, {
       id: journal.id,
@@ -196,8 +196,8 @@ export const saveJournal = async (
     // Save encrypted note to database
     await db.runAsync(
       `INSERT OR REPLACE INTO journals 
-       (id, date, iv, content, title, mood, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, date, iv, content, title, mood, tags_encrypted, images, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         encryptedNote.id,
         encryptedNote.date || '',
@@ -205,6 +205,8 @@ export const saveJournal = async (
         encryptedNote.content,
         encryptedNote.title || '',
         encryptedNote.mood || '',
+        encryptedNote.tags_encrypted || '',
+        JSON.stringify(encryptedNote.images || []),
         encryptedNote.created_at || new Date().toISOString(),
         encryptedNote.updated_at || new Date().toISOString(),
       ]
