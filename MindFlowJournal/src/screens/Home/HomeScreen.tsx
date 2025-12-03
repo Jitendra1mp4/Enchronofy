@@ -1,12 +1,14 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { format, subDays } from 'date-fns';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
+import { Calendar, DateData } from 'react-native-calendars';
 import { Button, Card, Chip, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { calculateLongestStreak } from '../../services/streakService'; // MAKE SURE THIS EXISTS
+import { calculateLongestStreak, getMarkedDates } from '../../services/streakService';
 import { listJournals } from '../../services/unifiedStorageService';
 import { useAppDispatch, useAppSelector } from '../../stores/hooks';
-import { setJournals, setLongestStreak } from '../../stores/slices/journalsSlice'; // UPDATED
+import { setJournals, setLongestStreak } from '../../stores/slices/journalsSlice';
 import { useAuth } from '../../utils/authContext';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
@@ -15,14 +17,25 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { encryptionKey } = useAuth();
 
   const currentStreak = useAppSelector(state => state.journals.currentStreak);
-  const longestStreak = useAppSelector(state => state.journals.longestStreak); // GET FROM REDUX
+  const longestStreak = useAppSelector(state => state.journals.longestStreak);
   const journals = useAppSelector(state => state.journals.journals);
 
+  const [markedDates, setMarkedDates] = useState<any>({});
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     loadJournals();
   }, [encryptionKey]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      updateMarkedDates();
+    }, [journals])
+  );
+
+  useEffect(() => {
+    updateMarkedDates();
+  }, [journals]);
 
   useEffect(() => {
     // Animate streak number on change
@@ -53,6 +66,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
+  const updateMarkedDates = () => {
+    const marked = getMarkedDates(journals);
+    setMarkedDates(marked);
+  };
+
+  const handleDayPress = (day: DateData) => {
+    navigation.navigate('DateJournalList', { selectedDate: day.dateString });
+  };
+
+  const handleCreateJournalForToday = () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    navigation.navigate('JournalEditor', { selectedDate: today });
+  };
+
   // Get last 3 days of entries
   const getLast3DaysJournals = () => {
     const last3Days = [];
@@ -63,6 +90,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         j => format(new Date(j.date), 'yyyy-MM-dd') === dateStr
       ).length;
       last3Days.push({
+        dateKey: dateStr,
         date: format(date, 'MMM dd'),
         count,
         isToday: i === 0,
@@ -78,33 +106,40 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Streak Card */}
+        {/* Streak and Journal Count Row */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="headlineMedium">🔥 Current Streak</Text>
-            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-              <Text variant="displayLarge" style={styles.streakNumber}>
-                {currentStreak}
-              </Text>
-            </Animated.View>
-            <Text variant="bodyLarge">days in a row</Text>
-            <View style={styles.streakInfo}>
-              <Chip icon="trophy" compact>
-                Best: {longestStreak} days
-              </Chip>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                  <Text variant="displaySmall" style={styles.statNumber}>
+                    {currentStreak}
+                  </Text>
+                </Animated.View>
+                <Text variant="bodyMedium">🔥 Current Streak</Text>
+                <Chip icon="trophy" compact style={styles.bestChip}>
+                  Best: {longestStreak}
+                </Chip>
+              </View>
+              <View style={styles.statItem}>
+                <Text variant="displaySmall" style={styles.statNumber}>
+                  {journals.length}
+                </Text>
+                <Text variant="bodyMedium">📝 Total Entries</Text>
+              </View>
             </View>
           </Card.Content>
         </Card>
 
-        {/* Last 3 Days Status */}
+        {/* Recent Activity */}
         <Card style={styles.card}>
           <Card.Content>
             <Text variant="titleLarge" style={styles.cardTitle}>
               Recent Activity
             </Text>
             <View style={styles.daysRow}>
-              {last3Days.map((day, index) => (
-                <View key={index} style={styles.dayCard}>
+              {last3Days.map((day) => (
+                <View key={day.dateKey} style={styles.dayCard}>
                   <Text variant="bodySmall" style={styles.dayLabel}>
                     {day.isToday ? 'Today' : day.date}
                   </Text>
@@ -126,49 +161,61 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </Card.Content>
         </Card>
 
-        {/* Stats Card */}
+        {/* Calendar View */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.cardTitle}>
-              Your Journals
-            </Text>
-            <Text variant="displayMedium" style={styles.statNumber}>
-              {journals.length}
-            </Text>
-            <Text variant="bodyMedium">total entries</Text>
+            <Calendar
+              markingType="dot"
+              markedDates={markedDates}
+              onDayPress={handleDayPress}
+              theme={{
+                backgroundColor: theme.colors.surface,
+                calendarBackground: theme.colors.surface,
+                textSectionTitleColor: theme.colors.onSurface,
+                selectedDayBackgroundColor: theme.colors.primary,
+                selectedDayTextColor: theme.colors.onPrimary,
+                todayTextColor: theme.colors.primary,
+                dayTextColor: theme.colors.onSurface,
+                textDisabledColor: theme.colors.outline,
+                dotColor: theme.colors.primary,
+                selectedDotColor: theme.colors.onPrimary,
+                arrowColor: theme.colors.primary,
+                monthTextColor: theme.colors.onSurface,
+                indicatorColor: theme.colors.primary,
+                textDayFontWeight: '400',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '600',
+                textDayFontSize: 16,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 14,
+              }}
+            />
           </Card.Content>
         </Card>
 
         {/* Quick Actions */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.cardTitle}>
-              Quick Actions
-            </Text>
-            <Button
-              mode="contained"
-              onPress={() => navigation.navigate('JournalEditor', {})}
-              style={styles.actionButton}
-              icon="pencil"
-            >
-              New Journal Entry
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => navigation.navigate('JournalList')}
-              style={styles.actionButton}
-              icon="book-open-variant"
-            >
-              View All Journals
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => navigation.navigate('Calendar')}
-              style={styles.actionButton}
-              icon="calendar"
-            >
-              Calendar View
-            </Button>
+            <View style={styles.actionsRow}>
+              <Button
+                mode="contained"
+                onPress={handleCreateJournalForToday}
+                style={styles.actionButton}
+                icon="pencil"
+                compact
+              >
+                New Entry Today
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => navigation.navigate('JournalList')}
+                style={styles.actionButton}
+                icon="book-open-variant"
+                compact
+              >
+                View All
+              </Button>
+            </View>
           </Card.Content>
         </Card>
 
@@ -206,14 +253,21 @@ const styles = StyleSheet.create({
   cardTitle: {
     marginBottom: 16,
   },
-  streakNumber: {
-    textAlign: 'center',
-    marginVertical: 8,
-    fontWeight: 'bold',
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
   },
-  streakInfo: {
-    marginTop: 12,
+  statItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  bestChip: {
+    marginTop: 8,
   },
   daysRow: {
     flexDirection: 'row',
@@ -231,14 +285,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  statNumber: {
-    textAlign: 'center',
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginVertical: 8,
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
   },
   actionButton: {
-    marginBottom: 12,
+    flex: 1,
   },
   bottomNav: {
     flexDirection: 'row',

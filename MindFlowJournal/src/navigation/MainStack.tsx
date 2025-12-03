@@ -4,6 +4,7 @@ import APP_CONFIG from '../config/appConfig';
 import CalendarScreen from '../screens/Calendar/CalendarScreen';
 import ExportScreen from '../screens/Export/ExportScreen';
 import HomeScreen from '../screens/Home/HomeScreen';
+import DateJournalListScreen from '../screens/Journal/DateJournalListScreen';
 import JournalDetailScreen from '../screens/Journal/JournalDetailScreen';
 import JournalEditorScreen from '../screens/Journal/JournalEditorScreen';
 import JournalListScreen from '../screens/Journal/JournalListScreen';
@@ -38,6 +39,11 @@ export const MainStack: React.FC = () => {
         name="JournalDetail"
         component={JournalDetailScreen}
         options={{ title: 'Journal Entry' }}
+      />
+      <Stack.Screen
+        name="DateJournalList"
+        component={DateJournalListScreen}
+        options={{ title: 'Journals' }}
       />
       <Stack.Screen
         name="Calendar"
