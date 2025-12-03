@@ -1,38 +1,31 @@
 import React, { useState } from 'react';
-import { Alert } from '../../utils/alert';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import {
-  TextInput,
   Button,
-  Text,
-  useTheme,
   Chip,
   HelperText,
+  Text,
+  TextInput,
+  useTheme,
 } from 'react-native-paper';
+import { Alert } from '../../utils/alert';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import CryptoManager from '../../services/cryptoManager';
+import {
+  clearRecoveryKeyDisplay,
+  markAsLaunched,
+  saveRecoveryKeyHash,
+  saveVault,
+} from '../../services/unifiedStorageService';
 import { useAppDispatch } from '../../stores/hooks';
 import {
   setAuthenticated,
-  setSalt,
-  setSecurityQuestions,
 } from '../../stores/slices/authSlice';
 import { useAuth } from '../../utils/authContext';
-import {
-  deriveKeyFromPassword,
-  hashText,
-} from '../../services/encryptionService';
-import {
-  saveSalt,
-  saveSecurityQuestions,
-  savePublicSecurityQuestions,
-  markAsLaunched,
-  saveVerificationToken, // ADD THIS
-  saveSecurityAnswerHashes, 
-} from '../../services/storageService';
 
+import { QAPair } from '../../types/crypto';
 import { PREDEFINED_SECURITY_QUESTIONS } from '../../utils/securityQuestions';
-import { SecurityQuestion } from '../../types';
 
 const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -67,12 +60,10 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       const newAnswers = { ...answers };
       delete newAnswers[questionId];
       setAnswers(newAnswers);
+    } else if (selectedQuestions.length < 3) {
+      setSelectedQuestions([...selectedQuestions, questionId]);
     } else {
-      if (selectedQuestions.length < 3) {
-        setSelectedQuestions([...selectedQuestions, questionId]);
-      } else {
-        Alert.alert('Maximum Reached', 'You can only select 3 questions');
-      }
+      Alert.alert('Maximum Reached', 'You can only select 3 questions');
     }
   };
 
@@ -82,70 +73,68 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      // 1. Derive encryption key from password
-      const { key, salt } = deriveKeyFromPassword(password);
+      // 1. Prepare QA pairs in the order they were selected
+      const qaPairs: QAPair[] = selectedQuestions.map(qId => ({
+        questionId: qId,
+        answer: answers[qId],
+      }));
 
-      // 2. Save salt to storage
-      await saveSalt(salt);
-
-      // 3. Create security questions with hashed answers
-      const securityQuestions: SecurityQuestion[] = selectedQuestions.map(
-        qId => {
-          const question = PREDEFINED_SECURITY_QUESTIONS.find(
-            q => q.id === qId
-          );
-          return {
-            questionId: qId,
-            question: question!.question,
-            answerHash: hashText(answers[qId]),
-          };
-        }
+      // 2. Initialize vault using CryptoManager
+      // This generates:
+      // - Master Data Key (DK)
+      // - Three key wraps (password, security answers, recovery key)
+      // - Three salts for key derivation
+      const { vault, recoveryKey } = CryptoManager.initializeVault(
+        password,
+        qaPairs
       );
 
-      // 4. Save security questions (encrypted with user's key)
-      await saveSecurityQuestions(securityQuestions, key);
+      // 3. Save vault to persistent storage
+      await saveVault(vault);
 
+      // 4. Save recovery key hash (for verification purposes)
+      // Note: Full recovery key is shown once to user
+      await saveRecoveryKeyHash(recoveryKey);
 
-
-      // 4.5 Save verification token
-      await saveVerificationToken(key);
-
-      // 4.6 Save answer hashes separately for recovery (ADD THIS)
-      const answerHashes = selectedQuestions.map(qId => ({
-        questionId: qId,
-        answerHash: hashText(answers[qId]),
-      }));
-      await saveSecurityAnswerHashes(answerHashes);
-
-      
-      // 5. Save public copy (just questions, for recovery flow)
-      const publicQuestions = securityQuestions.map(sq => ({
-        questionId: sq.questionId,
-        question: sq.question,
-      }));
-      await savePublicSecurityQuestions(publicQuestions);
-
-      // 6. Mark app as launched
+      // 5. Mark app as launched
       await markAsLaunched();
 
-      // 7. Update Redux state
-      dispatch(setSalt(salt));
-      dispatch(setSecurityQuestions(securityQuestions));
+      // 6. Update Redux state
       dispatch(setAuthenticated(true));
 
-      // 8. Store encryption key in context
-      setEncryptionKey(key);
+      // 7. Store the DK in context (user is now logged in with this key)
+      // Decrypt DK using password for immediate access
+      const { dk } = CryptoManager.unlockWithPassword(vault, password);
+      setEncryptionKey(dk);
 
+      // 8. Show recovery key to user and ask them to save it
       Alert.alert(
-        'Success!',
-        'Your account has been created. Your journals are now protected.',
-        [{ text: 'OK' }]
+        'Account Created!',
+        `Your account has been created successfully.\n\n` +
+          `⚠️ IMPORTANT: Save this Recovery Key somewhere safe:\n\n` +
+          `${recoveryKey}\n\n` +
+          `You will need this if you ever forget your password. ` +
+          `Write it down or take a screenshot.`,
+        [
+          {
+            text: 'I have saved my Recovery Key',
+            onPress: () => {
+              clearRecoveryKeyDisplay().catch((err: any) =>
+                console.error('Error clearing recovery key:', err)
+              );
+              Alert.alert(
+                'Great!',
+                'Your journals are now protected with encryption. Start journaling!'
+              );
+            },
+          },
+        ]
       );
     } catch (error) {
       console.error('Signup error:', error);
       Alert.alert(
         'Error',
-        'Failed to create account. Please try again.',
+        `Failed to create account: ${error instanceof Error ? error.message : 'Unknown error'}`,
         [{ text: 'OK' }]
       );
     } finally {
@@ -172,6 +161,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           secureTextEntry={!showPassword}
           mode="outlined"
           style={styles.input}
+          disabled={isLoading}
           right={
             <TextInput.Icon
               icon={showPassword ? 'eye-off' : 'eye'}
@@ -191,6 +181,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           onChangeText={setConfirmPassword}
           secureTextEntry={!showConfirmPassword}
           mode="outlined"
+          disabled={isLoading}
           style={styles.input}
           right={
             <TextInput.Icon
@@ -212,7 +203,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           Security Questions
         </Text>
         <Text variant="bodySmall" style={styles.sectionSubtitle}>
-          Select 3 questions to help you recover your password if you forget it
+          Select 3 questions to help you recover your account if you forget your password
         </Text>
 
         <View style={styles.questionsContainer}>
@@ -240,10 +231,13 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               );
               return (
                 <View key={qId}>
-                  <Text variant="bodySmall" style={styles.questionText}>
+                  <Text variant="bodySmall" 
+                  
+                  style={styles.questionText}>
                     {question?.question}
                   </Text>
                   <TextInput
+                  disabled={isLoading}
                     value={answers[qId] || ''}
                     onChangeText={text =>
                       setAnswers({ ...answers, [qId]: text })
@@ -265,7 +259,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           disabled={!canSubmit || isLoading}
           loading={isLoading}
         >
-          Create Account
+          {isLoading ? "Creating a secure environment...":"Create Account"}
         </Button>
 
         <Button

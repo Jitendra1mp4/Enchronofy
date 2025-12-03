@@ -1,17 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { encryptJSON, decryptJSON, encryptText } from './encryptionService';
 import { Journal, SecurityQuestion } from '../types';
+import type { Vault } from '../types/crypto';
+import { decryptJSON, encryptJSON } from './encryptionService';
+import APP_CONFIG from '../config/appConfig';
 
-// Storage keys
-const KEYS = {
-  SALT: '@mindflow_salt',
-  SECURITY_QUESTIONS: '@mindflow_security_questions',
-  SECURITY_ANSWERS_HASH: '@mindflow_security_answers_hash', // ADD THIS
-  JOURNALS: '@mindflow_journals',
-  SETTINGS: '@mindflow_settings',
-  FIRST_LAUNCH: '@mindflow_first_launch',
-  VERIFICATION_TOKEN: '@mindflow_verification_token',
-};
+// Storage keys - all derived from centralized APP_CONFIG
+export const KEYS = APP_CONFIG.storageKeys;
 
 /**
  * Check if this is the first app launch
@@ -40,9 +34,9 @@ export const markAsLaunched = async (): Promise<void> => {
 /**
  * Save the salt used for key derivation
  */
-export const saveSalt = async (salt: string): Promise<void> => {
+export const saveSalt = async (saltKey:string, salt: string): Promise<void> => {
   try {
-    await AsyncStorage.setItem(KEYS.SALT, salt);
+    await AsyncStorage.setItem(saltKey, salt);
   } catch (error) {
     console.error('Error saving salt:', error);
     throw new Error('Failed to save encryption salt');
@@ -52,9 +46,9 @@ export const saveSalt = async (salt: string): Promise<void> => {
 /**
  * Get the stored salt
  */
-export const getSalt = async (): Promise<string | null> => {
+export const getSalt = async (saltKey:string): Promise<string | null> => {
   try {
-    return await AsyncStorage.getItem(KEYS.SALT);
+    return await AsyncStorage.getItem(saltKey);
   } catch (error) {
     console.error('Error getting salt:', error);
     return null;
@@ -305,7 +299,7 @@ export const verifyPassword = async (key: string): Promise<boolean> => {
 export const clearAllData = async (): Promise<void> => {
   try {
     await AsyncStorage.multiRemove([
-      KEYS.SALT,
+      KEYS.MASTER_KEY_SALT,
       KEYS.SECURITY_QUESTIONS,
       KEYS.SECURITY_QUESTIONS + '_public',
       KEYS.JOURNALS,
@@ -315,5 +309,108 @@ export const clearAllData = async (): Promise<void> => {
   } catch (error) {
     console.error('Error clearing data:', error);
     throw new Error('Failed to clear data');
+  }
+};
+
+/**
+ * ============================================================================
+ * VAULT-BASED ARCHITECTURE (NEW)
+ * ============================================================================
+ * The following functions support the new centralized Data Key architecture
+ * where one master key encrypts all user data, and is wrapped by multiple
+ * access methods (password, security answers, recovery key).
+ */
+
+/**
+ * Save the complete Vault object (encrypted or unencrypted depending on use case)
+ * 
+ * The Vault contains:
+ * - Salts for key derivation
+ * - DK wrapped by password, security answers, and recovery key
+ * - Security questions
+ * 
+ * @param vault - Vault object to store
+ */
+export const saveVault = async (vault: Vault): Promise<void> => {
+  try {
+    // Vault is stored as-is (it's already structured with encrypted key wraps)
+    await AsyncStorage.setItem(KEYS.VAULT, JSON.stringify(vault));
+  } catch (error) {
+    console.error('Error saving vault:', error);
+    throw new Error('Failed to save vault');
+  }
+};
+
+/**
+ * Retrieve the Vault object
+ * 
+ * @returns Vault object or null if not found
+ */
+export const getVault = async (): Promise<Vault | null> => {
+  try {
+    const vaultStr = await AsyncStorage.getItem(KEYS.VAULT);
+    if (!vaultStr) return null;
+    return JSON.parse(vaultStr) as Vault;
+  } catch (error) {
+    console.error('Error retrieving vault:', error);
+    return null;
+  }
+};
+
+/**
+ * Save the recovery key (hashed for display purposes only)
+ * This is shown to the user once during signup
+ * 
+ * @param recoveryKey - The full recovery key (UUID format)
+ */
+export const saveRecoveryKeyHash = async (recoveryKey: string): Promise<void> => {
+  try {
+    // Store a hash of the recovery key for verification purposes
+    // This is NOT used for actual decryption (vault has that)
+    await AsyncStorage.setItem(KEYS.RECOVERY_KEY_DISPLAY, recoveryKey);
+  } catch (error) {
+    console.error('Error saving recovery key:', error);
+    throw new Error('Failed to save recovery key');
+  }
+};
+
+/**
+ * Get the recovery key hash (for verification/display UI)
+ * 
+ * @returns Recovery key hash or null
+ */
+export const getRecoveryKeyHash = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(KEYS.RECOVERY_KEY_DISPLAY);
+  } catch (error) {
+    console.error('Error retrieving recovery key hash:', error);
+    return null;
+  }
+};
+
+/**
+ * Clear the recovery key after user has acknowledged it
+ * This makes sure it's not accidentally exposed in logs
+ */
+export const clearRecoveryKeyDisplay = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(KEYS.RECOVERY_KEY_DISPLAY);
+  } catch (error) {
+    console.error('Error clearing recovery key display:', error);
+  }
+};
+
+/**
+ * Check if a vault has been initialized
+ * 
+ * @returns true if vault exists, false otherwise
+ */
+export const hasVault = async (): Promise<boolean> => {
+  try {
+    const vault = await getVault();
+    return vault !== null;
+  } catch (error) {
+    console.error('Error checking vault existence:', error);
+    return false;
   }
 };

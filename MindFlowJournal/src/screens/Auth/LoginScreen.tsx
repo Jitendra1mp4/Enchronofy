@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { TextInput, Button, Text, useTheme } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Button, Text, TextInput, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppDispatch } from '../../stores/hooks';
-import { setAuthenticated, setSalt } from '../../stores/slices/authSlice';
-import { useAuth } from '../../utils/authContext';
-import { deriveKeyFromPassword } from '../../services/encryptionService';
+import APP_CONFIG from '../../config/appConfig';
+import CryptoManager from '../../services/cryptoManager';
 import {
-  getSalt,
+  getVault,
   isFirstLaunch,
-  verifyPassword,
-} from '../../services/storageService';
+} from '../../services/unifiedStorageService';
+import { useAppDispatch } from '../../stores/hooks';
+import { setAuthenticated } from '../../stores/slices/authSlice';
 import { Alert } from '../../utils/alert';
+import { useAuth } from '../../utils/authContext';
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -34,44 +34,36 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!password) {
-      Alert.alert('Error', 'Please enter your password');
+      Alert.alert('Oops!', 'Please enter your password');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // 1. Get stored salt
-      const salt = await getSalt();
-      if (!salt) {
-        Alert.alert('Error', 'No account found. Please create an account.');
+      // 1. Retrieve vault from storage
+      const vaultData = await getVault();
+      if (!vaultData) {
+        Alert.alert('Oops!', 'No account found. Please create an account.');
         setIsLoading(false);
         return;
       }
 
-      // 2. Derive key from password
-      const { key } = deriveKeyFromPassword(password, salt);
+      // 2. Unlock vault with password using CryptoManager
+      // This derives the password-based key and decrypts the Data Key (DK)
+      const { dk } = CryptoManager.unlockWithPassword(vaultData as any, password);
 
-      // 3. Verify password using verification token
-      const isValid = await verifyPassword(key);
-      if (!isValid) {
-        Alert.alert(
-          'Wrong Password',
-          'The password you entered is incorrect. Please try again or use password recovery.'
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      // 4. Password is correct - update state
-      dispatch(setSalt(salt));
+      // 3. Password is correct - update state
       dispatch(setAuthenticated(true));
-      setEncryptionKey(key);
+      setEncryptionKey(dk);
 
       // Success! Navigation will happen automatically via RootNavigator
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', 'Failed to login. Please try again.');
+      Alert.alert(
+        'Wrong Password',
+        'The password you entered is incorrect. Please try again or use password recovery.'
+      );
       setIsLoading(false);
     }
   };
@@ -82,7 +74,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     >
       <View style={styles.content}>
         <Text variant="displaySmall" style={styles.title}>
-          MindFlow Journal
+          {APP_CONFIG.displayName}
         </Text>
         <Text variant="bodyLarge" style={styles.subtitle}>
           Secure. Private. Yours.
@@ -112,7 +104,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           disabled={isLoading || !password}
           loading={isLoading}
         >
-          Unlock
+          {isLoading ? "Unlocking & Securing the environment..." : "Unlock"}
         </Button>
 
         <Button

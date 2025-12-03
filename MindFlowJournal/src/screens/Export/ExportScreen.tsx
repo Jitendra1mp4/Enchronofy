@@ -1,6 +1,6 @@
 import { formatDate } from 'date-fns';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import {
   Button,
   Card,
@@ -12,11 +12,12 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import APP_CONFIG from '../../config/appConfig';
 import {
-  downloadTextFile,
   exportAsJSON,
   exportAsPDF,
   exportAsText,
+  saveTextFile,
   shareFile,
 } from '../../services/exportService';
 import { useAppSelector } from '../../stores/hooks';
@@ -56,7 +57,7 @@ const ExportScreen: React.FC = () => {
 
   const handleExport = async (format: 'json' | 'txt' | 'pdf') => {
     if (!encryptionKey) {
-      Alert.alert('Error', 'Encryption key not found. Please log in again.');
+      Alert.alert('Oops!', 'Encryption key not found. Please log in again.');
       return;
     }
 
@@ -77,31 +78,46 @@ const ExportScreen: React.FC = () => {
 
       switch (format) {
         case 'json':
-          filename = `mindflow-journals-${timestamp}.json`;
+          filename = `${APP_CONFIG.slug.toLowerCase()}-journals-${timestamp}.json`;
           content = await exportAsJSON(filteredJournals);
-          downloadTextFile(content, filename);
+          uri = await saveTextFile(content, filename);
           break;
 
         case 'txt':
-          filename = `mindflow-journals-${timestamp}.txt`;
+          filename = `${APP_CONFIG.slug.toLowerCase()}-journals-${timestamp}.txt`;
           content = await exportAsText(filteredJournals);
-          downloadTextFile(content, filename);
+          uri = await saveTextFile(content, filename);
           break;
 
         case 'pdf':
-          filename = `mindflow-journals-${timestamp}.pdf`;
+          filename = `${APP_CONFIG.slug.toLowerCase()}-journals-${timestamp}.pdf`;
           uri = await exportAsPDF(filteredJournals);
-          await shareFile(uri, filename);
           break;
       }
 
-      Alert.alert(
-        'Success',
-        `Exported ${filteredJournals.length} journal(s) as ${format.toUpperCase()}`
-      );
+      // On mobile, open share dialog which includes "Save to Files" option
+      if (Platform.OS !== 'web') {
+        await shareFile(uri, filename);
+      }
+
+      // Show success message with file info
+      if (Platform.OS === 'web') {
+        Alert.alert(
+          'Success',
+          `Exported ${filteredJournals.length} journal(s) as ${format.toUpperCase()}\n\nFile downloaded: ${filename}`
+        );
+      } else {
+        // On mobile, show helpful message after share dialog
+        // Alert.alert(
+        //   'Export Complete',
+        //   `Exported ${filteredJournals.length} journal(s) as ${format.toUpperCase()}\n\n` +
+        //   `File saved: ${filename}\n\n` +
+        //   `Tip: Use "Save to Files" in the share dialog to save to your device.`
+        // );
+      }
     } catch (error) {
       console.error('Export error:', error);
-      Alert.alert('Error', 'Failed to export journals. Please try again.');
+      Alert.alert('Oops!', 'Failed to export journals. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -112,8 +128,9 @@ const ExportScreen: React.FC = () => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'bottom']}
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 16 }]}>
         <Card style={styles.card}>
           <Card.Content>
             <Text variant="titleLarge" style={styles.title}>
@@ -239,14 +256,21 @@ const ExportScreen: React.FC = () => {
               • Exported files do not include encryption
             </Text>
             <Text variant="bodySmall" style={styles.infoText}>
-              • Images are referenced but not embedded in exports
+              • Images are embedded in PDF exports
             </Text>
             <Text variant="bodySmall" style={styles.infoText}>
               • Keep exported files secure as they contain your personal data
             </Text>
-            <Text variant="bodySmall" style={styles.infoText}>
-              • PDF export works best on mobile devices
-            </Text>
+            {Platform.OS !== 'web' && (
+              <>
+                <Text variant="bodySmall" style={styles.infoText}>
+                  • On mobile: Use "Save to Files" (iOS) or "Save" (Android) in the share dialog
+                </Text>
+                <Text variant="bodySmall" style={styles.infoText}>
+                  • Files are saved to your device's Documents folder
+                </Text>
+              </>
+            )}
           </Card.Content>
         </Card>
       </ScrollView>

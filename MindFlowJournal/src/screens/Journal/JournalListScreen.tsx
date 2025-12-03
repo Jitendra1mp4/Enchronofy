@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { Card, Chip, FAB, Searchbar, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { listJournals } from '../../services/storageService';
+import { listJournals } from '../../services/unifiedStorageService';
 import { useAppDispatch, useAppSelector } from '../../stores/hooks';
 import { setJournals, setLoading } from '../../stores/slices/journalsSlice';
 import { Journal } from '../../types';
@@ -110,6 +110,7 @@ const renderJournalItem = ({ item, index }: { item: Journal; index: number }) =>
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'bottom']}
     >
       {journals.length > 0 && (
         <Searchbar
@@ -136,7 +137,7 @@ const renderJournalItem = ({ item, index }: { item: Journal; index: number }) =>
           data={filteredJournals}
           renderItem={renderJournalItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: 80 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -163,7 +164,6 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
-    paddingBottom: 80,
   },
   journalCard: {
     marginBottom: 12,

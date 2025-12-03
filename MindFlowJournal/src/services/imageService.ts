@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
 
@@ -45,18 +46,46 @@ export const imageUriToBase64 = async (uri: string): Promise<string> => {
       throw error;
     }
   } else {
-    // For mobile
-    const { default: FileSystem } = await import('expo-file-system');
-    return await FileSystem.readAsStringAsync(uri, {
-      encoding: "base64",
-    });
+    // For mobile (iOS/Android) - use Expo FileSystem
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: "base64", // FileSystem.EncodingType.Base64,
+      });
+      return base64;
+    } catch (error) {
+      console.error('Error converting mobile image to base64:', error);
+      // Fallback: try fetch method for data URIs or remote URLs
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            const base64 = result.split(',')[1] || result;
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (fallbackError) {
+        console.error('All base64 conversion methods failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
   }
 };
 
 /**
  * Convert base64 to data URI for display
+ * Handles both raw base64 strings and strings that already have data URI prefix
  */
 export const base64ToDataUri = (base64: string): string => {
+  // If it already has a data URI prefix, return as-is
+  if (base64.startsWith('data:')) {
+    return base64;
+  }
+  // Otherwise, add the prefix
   return `data:image/jpeg;base64,${base64}`;
 };
 

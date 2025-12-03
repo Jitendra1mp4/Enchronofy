@@ -1,19 +1,27 @@
 import { useFocusEffect } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   BackHandler,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Button, HelperText, TextInput, useTheme } from "react-native-paper";
 import {
   SafeAreaView,
-  useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { v4 as uuidv4 } from "uuid";
-import { getJournal, saveJournal } from "../../services/storageService";
+import {
+  base64ToDataUri,
+  compressImage,
+  imageUriToBase64,
+} from "../../services/imageService";
+import { getJournal, saveJournal } from "../../services/unifiedStorageService";
 import { useAppDispatch } from "../../stores/hooks";
 import { addJournal, updateJournal } from "../../stores/slices/journalsSlice";
 import { Journal } from "../../types";
@@ -27,7 +35,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const { encryptionKey } = useAuth();
-  const insets = useSafeAreaInsets();
 
   const journalId = route.params?.journalId || null;
   const selectedDate = route.params?.selectedDate || null;
@@ -42,6 +49,54 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const [isJournalCreated, setIsJournalCreated] = useState(isAlreadyExist);
   const [generatedJournalId, setGeneratedJournalId] = useState(journalId);
   const [isJournalModified, setIsJournalModified] = useState(false);
+  const [isCompressingImage, setIsCompressingImage] = useState(false);
+  const [imageIds, setImageIds] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Request camera permissions on mount
+  useEffect(() => {
+    const requestPermissions = async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        console.warn("Camera roll permission not granted");
+      }
+    };
+    requestPermissions();
+  }, []);
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsCompressingImage(true);
+        const selectedUri = result.assets[0].uri;
+
+        // Compress and convert to base64 for optimal storage
+        const compressedUri = await compressImage(selectedUri, 1200, 1200, 0.8);
+        const base64 = await imageUriToBase64(compressedUri);
+
+        setImageBase64List([...imageBase64List, base64]);
+        setImageIds([...imageIds, uuidv4()]);
+        // Alert.alert("Success", "Image added successfully!");
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
+    } finally {
+      setIsCompressingImage(false);
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImageBase64List(imageBase64List.filter((_, i) => i !== index));
+    setImageIds(imageIds.filter((_, i) => i !== index));
+  };
 
   // This triggers by pressing back from any screen which I am not intended for.
 
@@ -91,12 +146,21 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         setTitle(journal.title || "");
         setText(journal.text);
         if (journal.images && journal.images.length > 0) {
+          // console.log('Loading images in editor:', {
+          //   count: journal.images.length,
+          //   firstImagePreview: journal.images[0]?.substring(0, 50) || 'none',
+          // });
           setImageBase64List(journal.images);
+          setImageIds(journal.images.map(() => uuidv4()));
+        } else {
+          // console.log('No images found in journal');
+          setImageBase64List([]);
+          setImageIds([]);
         }
       }
     } catch (error) {
-      console.error("Error loading journal:", error);
-      Alert.alert("Error", "Failed to load journal entry");
+      // console.error("Error loading journal:", error);
+      Alert.alert("Oops!", "Failed to load journal entry");
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +172,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     
     if (!encryptionKey) {
       if (showAlert)
-        Alert.alert("Error", "Encryption key not found. Please login again.");
+        Alert.alert("Oops!", "Encryption key not found. Please login again.");
       return false;
     }
 
@@ -181,8 +245,9 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       <SafeAreaView
         style={[
           styles.container,
-          { paddingTop: insets.top, backgroundColor: theme.colors.background },
+          { backgroundColor: theme.colors.background },
         ]}
+        edges={['top', 'bottom']}
       >
         <HelperText type="info" style={styles.loadingText}>
           Loading journal...
@@ -195,15 +260,16 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     <SafeAreaView
       style={[
         styles.container,
-        { paddingTop: insets.top, backgroundColor: theme.colors.background },
+        { backgroundColor: theme.colors.background },
       ]}
+      edges={['top', 'bottom']}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: 16 }]}
           keyboardShouldPersistTaps="handled"
         >
           <TextInput
@@ -214,7 +280,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             style={styles.titleInput}
             placeholder="Title"
             returnKeyType="next"
-            blurOnSubmit={false}
           />
 
           <TextInput
@@ -227,6 +292,65 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             autoFocus
           />
 
+          {/* Image Gallery Section */}
+          {imageBase64List.length > 0 && (
+            <View style={styles.gallerySection}>
+              <HelperText type="info" style={styles.galleryTitle}>
+                📸 {imageBase64List.length} Image
+                {imageBase64List.length === 1 ? "" : "s"} Added
+              </HelperText>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.imageGallery}
+              >
+                {imageBase64List.map((base64, index) => {
+                  const imageUri = base64ToDataUri(base64);
+                  return (
+                    <View key={imageIds[index] || `img-${index}`} style={styles.imageThumbnailContainer}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => setSelectedImage(imageUri)}
+                      >
+                        <Image
+                          source={{ uri: imageUri }}
+                          style={styles.imageThumbnail}
+                          onError={(error) => {
+                            // console.error('Image load error in editor:', error.nativeEvent.error);
+                            console.log('Failed image URI preview:', imageUri.substring(0, 100));
+                          }}
+                          onLoad={() => {
+                            console.log('Image loaded successfully in editor:', index);
+                          }}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveImage(index)}
+                        style={styles.removeImageButton}
+                      >
+                        <HelperText type="error" style={styles.removeImageText}>
+                          ✕
+                        </HelperText>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Image Picker Button */}
+          <Button
+            mode="outlined"
+            onPress={handlePickImage}
+            style={styles.imagePickerButton}
+            loading={isCompressingImage}
+            disabled={isCompressingImage}
+            icon="image-plus"
+          >
+            {isCompressingImage ? "Processing..." : "Add Images"}
+          </Button>
+
           <Button
             mode="contained"
             onPress={async () => await handleSave(true)}
@@ -234,12 +358,35 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             loading={isSaving}
             disabled={isSaving || !text.trim()}
           >
-            {isJournalCreated
-              ? "Saved"
-              : "Start typing, You don't need to save.."}
+            {isJournalCreated ? "Saved!" : "Start typing, You don't need to save.."}
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Full Screen Image Modal */}
+      {selectedImage && (
+        <View style={styles.fullscreenOverlay}>
+          <TouchableOpacity
+            style={styles.fullscreenBackdrop}
+            activeOpacity={1}
+            onPress={() => setSelectedImage(null)}
+          />
+          <View style={styles.fullscreenContent}>
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.fullscreenImage}
+              resizeMode="contain"
+            />
+            <Button
+              mode="contained-tonal"
+              style={styles.fullscreenCloseButton}
+              onPress={() => setSelectedImage(null)}
+            >
+              Close
+            </Button>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -264,12 +411,81 @@ const styles = StyleSheet.create({
     minHeight: 400,
     textAlignVertical: "top",
   },
+  gallerySection: {
+    marginVertical: 16,
+  },
+  galleryTitle: {
+    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  imageGallery: {
+    marginBottom: 8,
+  },
+  imageThumbnailContainer: {
+    position: "relative",
+    marginRight: 8,
+  },
+  imageThumbnail: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#ff6b6b",
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  removeImageText: {
+    fontSize: 16,
+    color: "white",
+    textAlign: "center",
+  },
+  imagePickerButton: {
+    marginVertical: 12,
+  },
   saveButton: {
     marginTop: 20,
   },
   loadingText: {
     marginTop: 30,
     textAlign: "center",
+  },
+  fullscreenOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  fullscreenBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.9)",
+  },
+  fullscreenContent: {
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  fullscreenImage: {
+    width: "100%",
+    height: "80%",
+  },
+  fullscreenCloseButton: {
+    marginTop: 12,
   },
 });
 

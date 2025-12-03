@@ -18,8 +18,8 @@ import {
   useTheme,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { base64ToDataUri, deleteEncryptedImage } from '../../services/imageService';
-import { deleteJournal, getJournal } from '../../services/storageService';
+import { base64ToDataUri } from '../../services/imageService';
+import { deleteJournal, getJournal } from '../../services/unifiedStorageService';
 import { useAppDispatch } from '../../stores/hooks';
 import { deleteJournal as deleteJournalAction } from '../../stores/slices/journalsSlice';
 import { Journal } from '../../types';
@@ -38,7 +38,6 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const { journalId } = route.params;
   const [journal, setJournal] = useState<Journal | null>(null);
-  const [decryptedImages, setDecryptedImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -48,20 +47,25 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   }, [journalId]);
 
   const loadJournal = async () => {
-  if (!encryptionKey) return;
+    if (!encryptionKey) return;
 
-  setIsLoading(true);
-  try {
-    const loadedJournal = await getJournal(journalId, encryptionKey);
-    setJournal(loadedJournal);
-    // Images are already base64, no decryption needed
-  } catch (error) {
-    console.error('Error loading journal:', error);
-    Alert.alert('Error', 'Failed to load journal entry');
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    try {
+      const loadedJournal = await getJournal(journalId, encryptionKey);
+      console.log('Loaded journal:', {
+        id: loadedJournal?.id,
+        hasImages: !!loadedJournal?.images,
+        imageCount: loadedJournal?.images?.length || 0,
+        firstImagePreview: loadedJournal?.images?.[0]?.substring(0, 50) || 'none',
+      });
+      setJournal(loadedJournal);
+    } catch (error) {
+      console.error('Error loading journal:', error);
+      Alert.alert('Error', 'Failed to load journal entry');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   const handleDelete = () => {
@@ -84,14 +88,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
     setIsDeleting(true);
     try {
-      // Delete associated images
-      if (journal?.images) {
-        await Promise.all(
-          journal.images.map(img => deleteEncryptedImage(img))
-        );
-      }
-
-      await deleteJournal(journalId, encryptionKey);
+      await deleteJournal(journalId);
       dispatch(deleteJournalAction(journalId));
         navigation.goBack() ;
     } catch (error) {
@@ -136,8 +133,9 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top', 'bottom']}
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 16 }]}>
         {journal.title && (
           <Text variant="headlineMedium" style={styles.title}>
             {journal.title}
@@ -159,14 +157,27 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         {journal.images && journal.images.length > 0 && (
           <View style={styles.imagesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {journal.images.map((base64, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setSelectedImage(base64ToDataUri(base64))}
-                >
-                  <Image source={{ uri: base64ToDataUri(base64) }} style={styles.thumbnail} />
-                </TouchableOpacity>
-              ))}
+              {journal.images.map((base64, index) => {
+                const imageUri = base64ToDataUri(base64);
+                return (
+                  <TouchableOpacity
+                    key={`img-${journal.id}-${index}`}
+                    onPress={() => setSelectedImage(imageUri)}
+                  >
+                    <Image 
+                      source={{ uri: imageUri }} 
+                      style={styles.thumbnail}
+                      onError={(error) => {
+                        console.error('Image load error:', error.nativeEvent.error);
+                        console.log('Failed image URI preview:', imageUri.substring(0, 100));
+                      }}
+                      onLoad={() => {
+                        console.log('Image loaded successfully:', index);
+                      }}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
