@@ -198,15 +198,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Card.Content>
             <View style={styles.actionsRow}>
               <Button
-                mode="contained"
-                onPress={handleCreateJournalForToday}
-                style={styles.actionButton}
-                icon="pencil"
-                compact
-              >
-                New Entry Today
-              </Button>
-              <Button
                 mode="outlined"
                 onPress={() => navigation.navigate('JournalList')}
                 style={styles.actionButton}
@@ -214,6 +205,15 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 compact
               >
                 View All
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleCreateJournalForToday}
+                style={styles.actionButton}
+                icon="pencil"
+                compact
+              >
+                New Entry Today
               </Button>
             </View>
           </Card.Content>
