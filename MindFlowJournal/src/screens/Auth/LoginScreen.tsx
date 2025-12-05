@@ -1,77 +1,99 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Button, Text, TextInput, useTheme } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import APP_CONFIG from '../../config/appConfig';
-import CryptoManager from '../../services/cryptoManager';
+import APP_CONFIG from "@/src/config/appConfig";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { Button, Text, TextInput, useTheme } from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
+import CryptoManager from "../../services/cryptoManager";
+import { getVault, isFirstLaunch } from "../../services/unifiedStorageService";
+import { useAppDispatch } from "../../stores/hooks";
 import {
-  getVault,
-  isFirstLaunch,
-} from '../../services/unifiedStorageService';
-import { useAppDispatch } from '../../stores/hooks';
-import { setAuthenticated } from '../../stores/slices/authSlice';
-import { Alert } from '../../utils/alert';
-import { useAuth } from '../../utils/authContext';
+  setAuthenticated,
+  setEncryptionKey,
+} from "../../stores/slices/authSlice";
+import { Alert } from "../../utils/alert";
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { setEncryptionKey } = useAuth();
+  // const { setEncryptionKey } = useAuth();
 
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
+  const [vaultReady, setVaultReady] = useState(false);
 
   useEffect(() => {
-    checkFirstLaunch();
+    const initializeLoginState = async () => {
+      try {
+        console.log(
+          "🔑 LoginScreen: Initializing via unifiedStorageService...",
+        );
+
+        // Check first launch
+        const firstTime = await isFirstLaunch();
+        setIsFirstTime(firstTime);
+
+        // Preload vault via unified service
+        const vaultData = await getVault();
+        console.log("✅ Vault status via unifiedStorageService:", !!vaultData);
+        setVaultReady(!!vaultData);
+      } catch (error) {
+        console.error("❌ unifiedStorageService init failed:", error);
+        setVaultReady(false);
+      }
+    };
+
+    initializeLoginState();
   }, []);
 
-  const checkFirstLaunch = async () => {
-    const firstTime = await isFirstLaunch();
-    setIsFirstTime(firstTime);
-  };
-
   const handleLogin = async () => {
-    if (!password) {
-      Alert.alert('Oops!', 'Please enter your password');
+    if (!password.trim()) {
+      Alert.alert("Oops!", "Please enter your password");
+      return;
+    }
+
+    if (!vaultReady) {
+      Alert.alert(
+        "Error",
+        "Secure storage not ready. Please wait and try again.",
+      );
       return;
     }
 
     setIsLoading(true);
-
     try {
-      // 1. Retrieve vault from storage
+      console.log("🔓 Unlocking...");
+
       const vaultData = await getVault();
       if (!vaultData) {
-        Alert.alert('Oops!', 'No account found. Please create an account.');
-        setIsLoading(false);
+        Alert.alert("Oops!", "No account found. Please create an account.");
         return;
       }
 
-      // 2. Unlock vault with password using CryptoManager
-      // This derives the password-based key and decrypts the Data Key (DK)
+      // 🛑 FIX: Destructure 'dk' from the returned object
       const { dk } = CryptoManager.unlockWithPassword(vaultData as any, password);
+      
+      console.log("✅ DK unlocked successfully");
 
-      // 3. Password is correct - update state
+      // Update Redux
       dispatch(setAuthenticated(true));
-      setEncryptionKey(dk);
+      dispatch(setEncryptionKey(dk)); // ✅ Now passing a string
 
-      // Success! Navigation will happen automatically via RootNavigator
+      console.log("🎉 Login complete");
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("❌ Login error:", error);
       Alert.alert(
-        'Wrong Password',
-        'The password you entered is incorrect. Please try again or use password recovery.'
+        "Wrong Password",
+        "The password is incorrect. Try again or use password recovery.",
       );
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
+<SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.content}>
         <Text variant="displaySmall" style={styles.title}>
           {APP_CONFIG.displayName}
@@ -80,6 +102,12 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           Secure. Private. Yours.
         </Text>
 
+        {!vaultReady && (
+          <View style={styles.vaultLoading}>
+            <Text>Loading secure storage...</Text>
+          </View>
+        )}
+
         <TextInput
           label="Password"
           value={password}
@@ -87,8 +115,9 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           secureTextEntry={!showPassword}
           mode="outlined"
           style={styles.input}
-          autoFocus
+          autoFocus={vaultReady}
           onSubmitEditing={handleLogin}
+          editable={vaultReady}
           right={
             <TextInput.Icon
               icon={showPassword ? 'eye-off' : 'eye'}
@@ -100,18 +129,18 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <Button
           mode="contained"
           onPress={handleLogin}
-          style={styles.button}
-          disabled={isLoading || !password}
+          disabled={isLoading || !vaultReady || !password.trim()}
           loading={isLoading}
+          style={styles.button}
         >
-          {isLoading ? "Unlocking & Securing the environment..." : "Unlock"}
+          {isLoading ? 'Unlocking...' : 'Unlock'}
         </Button>
 
         <Button
           mode="text"
           onPress={() => navigation.navigate('ForgotPassword')}
-          style={styles.link}
           disabled={isLoading}
+          style={styles.link}
         >
           Forgot Password?
         </Button>
@@ -120,8 +149,8 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Button
             mode="outlined"
             onPress={() => navigation.navigate('Signup')}
-            style={styles.signupButton}
             disabled={isLoading}
+            style={styles.signupButton}
           >
             First time? Create Password
           </Button>
@@ -130,6 +159,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     </SafeAreaView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -162,6 +192,12 @@ const styles = StyleSheet.create({
   signupButton: {
     marginTop: 32,
   },
+  vaultLoading: { // NEW - minimal addition
+    alignItems: 'center',
+    marginBottom: 16,
+    padding: 12,
+  }
+
 });
 
 export default LoginScreen;

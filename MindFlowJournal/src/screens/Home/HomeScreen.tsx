@@ -9,12 +9,13 @@ import { calculateLongestStreak, getMarkedDates } from '../../services/streakSer
 import { listJournals } from '../../services/unifiedStorageService';
 import { useAppDispatch, useAppSelector } from '../../stores/hooks';
 import { setJournals, setLongestStreak } from '../../stores/slices/journalsSlice';
-import { useAuth } from '../../utils/authContext';
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { encryptionKey } = useAuth();
+
+    const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
+
 
   const currentStreak = useAppSelector(state => state.journals.currentStreak);
   const longestStreak = useAppSelector(state => state.journals.longestStreak);

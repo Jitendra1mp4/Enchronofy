@@ -21,8 +21,8 @@ import {
 import { useAppDispatch } from '../../stores/hooks';
 import {
   setAuthenticated,
+  setEncryptionKey,
 } from '../../stores/slices/authSlice';
-import { useAuth } from '../../utils/authContext';
 
 import { QAPair } from '../../types/crypto';
 import { PREDEFINED_SECURITY_QUESTIONS } from '../../utils/securityQuestions';
@@ -30,7 +30,7 @@ import { PREDEFINED_SECURITY_QUESTIONS } from '../../utils/securityQuestions';
 const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { setEncryptionKey } = useAuth();
+  // const { setEncryptionKey } = useAuth();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -105,7 +105,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // 7. Store the DK in context (user is now logged in with this key)
       // Decrypt DK using password for immediate access
       const { dk } = CryptoManager.unlockWithPassword(vault, password);
-      setEncryptionKey(dk);
+      dispatch(setEncryptionKey(dk)); // ✅ Use Redux instead of context
 
       // 8. Show recovery key to user and ask them to save it
       Alert.alert(
@@ -142,6 +142,8 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
+  const controlDisabled = isLoading;
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
@@ -161,7 +163,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           secureTextEntry={!showPassword}
           mode="outlined"
           style={styles.input}
-          disabled={isLoading}
+          disabled={controlDisabled}
           right={
             <TextInput.Icon
               icon={showPassword ? 'eye-off' : 'eye'}
@@ -181,7 +183,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           onChangeText={setConfirmPassword}
           secureTextEntry={!showConfirmPassword}
           mode="outlined"
-          disabled={isLoading}
+          disabled={controlDisabled}
           style={styles.input}
           right={
             <TextInput.Icon
@@ -237,7 +239,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     {question?.question}
                   </Text>
                   <TextInput
-                  disabled={isLoading}
+                    disabled={controlDisabled}
                     value={answers[qId] || ''}
                     onChangeText={text =>
                       setAnswers({ ...answers, [qId]: text })
@@ -256,7 +258,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           mode="contained"
           onPress={handleSignup}
           style={styles.button}
-          disabled={!canSubmit || isLoading}
+          disabled={controlDisabled}
           loading={isLoading}
         >
           {isLoading ? "Creating a secure environment...":"Create Account"}
@@ -266,7 +268,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           mode="text"
           onPress={() => navigation.goBack()}
           style={styles.link}
-          disabled={isLoading}
+          disabled={controlDisabled}
         >
           Back to Login
         </Button>

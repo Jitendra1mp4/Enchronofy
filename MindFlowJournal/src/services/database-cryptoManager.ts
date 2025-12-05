@@ -18,6 +18,7 @@ const DB_NAME = APP_CONFIG.dbName;
 
 // --- Database Initialization ---
 
+
 export const initDatabase = async () => {
   try {
     // Open the database (creates if doesn't exist)
@@ -28,40 +29,54 @@ export const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS key_value_store (
         key TEXT PRIMARY KEY,
         value TEXT
-      );
-    `);
+        );
+        `);
+        
+        // Create journals table with per-note encryption
+        // Each row is one encrypted note with its own IV
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS journals (
+            id TEXT PRIMARY KEY,
+            date TEXT,
+            iv TEXT,
+            content TEXT NOT NULL,
+            title TEXT,
+            mood TEXT,
+            tags_encrypted TEXT,
+            images TEXT,
+            created_at TEXT,
+            updated_at TEXT
+            );
+            `);
+            
+            console.log('Database initialized successfully');
+          } catch (error) {
+            console.error('Error initializing database:', error);
+            throw error;
+          }
+        };
+        
+        export const DestroyAndReInitializeDatabase = async () => {
+          try {    
+             await db?.closeAsync();
+             await SQLite.deleteDatabaseAsync(DB_NAME) ;
 
-    // Create journals table with per-note encryption
-    // Each row is one encrypted note with its own IV
-    await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS journals (
-        id TEXT PRIMARY KEY,
-        date TEXT,
-        iv TEXT,
-        content TEXT NOT NULL,
-        title TEXT,
-        mood TEXT,
-        tags_encrypted TEXT,
-        images TEXT,
-        created_at TEXT,
-        updated_at TEXT
-      );
-    `);
-    
-    console.log('Database initialized successfully');
-  } catch (error) {
-    console.error('Error initializing database:', error);
-    throw error;
-  }
-};
-
-// --- Helper for Key-Value Store ---
-
-const setValue = async (key: string, value: string) => {
-  try {
-    if (!db) throw new Error('Database not initialized');
-    await db.runAsync(
-      'INSERT OR REPLACE INTO key_value_store (key, value) VALUES (?, ?)',
+             // Initialize a new database;
+             await initDatabase();         
+            console.log('Database Destroyed successfully');
+          } catch (error) {
+            console.error('Error Destroying database:', error);
+            throw error;
+          }
+        };
+        
+        // --- Helper for Key-Value Store ---
+        
+        const setValue = async (key: string, value: string) => {
+          try {
+            if (!db) throw new Error('Database not initialized');
+            await db.runAsync(
+              'INSERT OR REPLACE INTO key_value_store (key, value) VALUES (?, ?)',
       [key, value]
     );
   } catch (error) {

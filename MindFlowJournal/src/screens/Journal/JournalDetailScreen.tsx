@@ -21,11 +21,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { base64ToDataUri } from '../../services/imageService';
 import { deleteJournal, getJournal } from '../../services/unifiedStorageService';
-import { useAppDispatch } from '../../stores/hooks';
+import { useAppDispatch, useAppSelector } from '../../stores/hooks';
 import { deleteJournal as deleteJournalAction } from '../../stores/slices/journalsSlice';
 import { Journal } from '../../types';
 import { Alert } from '../../utils/alert';
-import { useAuth } from '../../utils/authContext';
 
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -37,7 +36,9 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { encryptionKey } = useAuth();
+  // const { encryptionKey } = useAuth();
+    const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
+
 
 
   const { journalId } = route.params;

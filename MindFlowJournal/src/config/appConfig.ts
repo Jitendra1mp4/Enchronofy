@@ -22,6 +22,14 @@ const SALT_SIZE = 32; // 256 bits
 const DK_SIZE = 32; // 256 bits for AES-256
 const IV_SIZE = 12; // 96 bits for GCM
 
+const LOCK_TIMEOUT_OPTIONS = [
+  { label: '1 Minute', value: 60000 },
+  { label: '5 Minutes', value: 300000 },
+  { label: '15 Minutes', value: 900000 },
+  { label: '30 Minutes', value: 1800000 },
+  { label: '1 Hour', value: 3600000 },
+];
+
 
 
 export const APP_CONFIG = {
@@ -44,7 +52,7 @@ export const APP_CONFIG = {
   DK_SIZE: DK_SIZE ,
   IV_SIZE: IV_SIZE ,
 
-
+  LOCK_TIMEOUT_OPTIONS : LOCK_TIMEOUT_OPTIONS, 
 
   // Storage keys - all derived from the prefix
   storageKeys: {

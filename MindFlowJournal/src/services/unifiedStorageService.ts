@@ -170,3 +170,27 @@ export const initializeStorage = async () => {
     throw error;
   }
 };
+
+
+/**
+ * Initialize the storage backend
+ * Call this on app startup
+ */
+export const ResetStorage = async () => {
+  try {
+    if (IS_WEB) {
+      // Reset AsyncStorageBackend
+       console.log('[Storage] Resetting AsyncStorageBackend Database');
+      AsyncStorageBackend.DestroyStorage();
+      console.log('[Storage] AsyncStorageBackend Reset successfully');       
+    } else {
+      // Reset SQLite database for native platforms
+      console.log('[Storage] Resetting SQLite Database');
+      await SQLiteBackend.DestroyAndReInitializeDatabase();
+      console.log('[Storage] SQLite Reset successfully');
+    }
+  } catch (error) {
+    console.error('[Storage] Failed to Reset storage:', error);
+    throw error;
+  }
+};

@@ -11,15 +11,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CryptoManager from '../../services/cryptoManager';
 import {
+  ResetStorage,
   getVault,
   saveRecoveryKeyHash,
   saveVault,
 } from '../../services/unifiedStorageService';
 import { useAppDispatch } from '../../stores/hooks';
-import { setAuthenticated } from '../../stores/slices/authSlice';
+import { setAuthenticated, setEncryptionKey } from '../../stores/slices/authSlice';
 import type { QAPair } from '../../types/crypto';
 import { Alert } from '../../utils/alert';
-import { useAuth } from '../../utils/authContext';
 
 type RecoveryMethod = 'answers' | 'recoveryKey';
 type RecoveryStep = 'method' | 'verify' | 'newPassword';
@@ -29,7 +29,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { setEncryptionKey } = useAuth();
+  // const { setEncryptionKey } = useAuth();
 
   // UI State
   const [recoveryMethod, setRecoveryMethod] = useState<RecoveryMethod>('answers');
@@ -235,7 +235,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
                   newPassword
                 );
                 dispatch(setAuthenticated(true));
-                setEncryptionKey(dk);
+                dispatch(setEncryptionKey(dk));
               },
             },
           ]
@@ -244,7 +244,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
         // For security answers, just unlock with new password
         const { dk } = CryptoManager.unlockWithPassword(newVault, newPassword);
         dispatch(setAuthenticated(true));
-        setEncryptionKey(dk);
+        dispatch(setEncryptionKey(dk));
 
         Alert.alert('Success!', 'Your password has been reset successfully');
       }
@@ -485,14 +485,37 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
         )}
 
         {step === 'method' && (
-          <Button
-            mode="text"
-            onPress={() => navigation.goBack()}
-            style={styles.link}
-            disabled={isLoading}
-          >
-            Back to Login
-          </Button>
+          <>
+            <Button
+              mode="text"
+              onPress={() => navigation.goBack()}
+              style={styles.link}
+              disabled={isLoading}
+              >
+              Back to Login
+            </Button>
+            <Button
+              mode="text"
+              onPress={async () => {
+                
+
+                 Alert.alert(
+                      'Destroy Database!',
+                      'Are you sure you want to destroy DB everything will be reset.',
+                      [ { text: 'Cancel', onPress: () => console.log("Destroy canceled") } ,
+                        { text: 'Yes', onPress: () => {
+                          ResetStorage()
+                          navigation.goBack()
+                        } } ]
+                    );
+
+              }}
+              style={styles.link}
+              disabled={isLoading}
+              >
+              ❌ Destroy Database
+            </Button>
+            </>
         )}
       </ScrollView>
     </SafeAreaView>

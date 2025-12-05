@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import APP_CONFIG from '../config/appConfig';
 import { Journal, SecurityQuestion } from '../types';
 import type { Vault } from '../types/crypto';
 import { decryptJSON, encryptJSON } from './encryptionService';
-import APP_CONFIG from '../config/appConfig';
 
 // Storage keys - all derived from centralized APP_CONFIG
 export const KEYS = APP_CONFIG.storageKeys;
@@ -414,3 +414,8 @@ export const hasVault = async (): Promise<boolean> => {
     return false;
   }
 };
+
+export function DestroyStorage() {
+  localStorage.clear();
+  sessionStorage.clear();     
+}

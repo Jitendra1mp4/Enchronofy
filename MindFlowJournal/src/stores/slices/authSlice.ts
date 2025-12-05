@@ -3,11 +3,14 @@ import { UserAuth } from '../../types';
 
 interface AuthState extends UserAuth {
   isLoading: boolean;
+   encryptionKey: string | null; // Store DK here instead of context
 }
 
 const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: false,
+    encryptionKey: null,
+
 };
 
 const authSlice = createSlice({
@@ -33,7 +36,13 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.salt = undefined;
       state.securityQuestions = undefined;
+      state.encryptionKey = null; // 🔑 CRITICAL: Wipe encryption key
     },
+
+    setEncryptionKey(state, action: PayloadAction<string | null>) {
+      state.encryptionKey = action.payload;
+    },   
+  
   },
 });
 
@@ -43,6 +52,9 @@ export const {
   setSecurityQuestions,
   setLoading,
   logout,
+  setEncryptionKey,
+  
+  
 } = authSlice.actions;
 
 export default authSlice.reducer;

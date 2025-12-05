@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import Markdown from "react-native-markdown-display"; // [web:2][web:10]
-import { Button, HelperText, TextInput, useTheme, SegmentedButtons, Chip, ToggleButton, Switch, Text } from "react-native-paper";
+import { Button, HelperText, Switch, Text, TextInput, useTheme } from "react-native-paper";
 import {
   SafeAreaView,
 } from "react-native-safe-area-context";
@@ -23,11 +23,10 @@ import {
   imageUriToBase64,
 } from "../../services/imageService";
 import { getJournal, saveJournal } from "../../services/unifiedStorageService";
-import { useAppDispatch } from "../../stores/hooks";
+import { useAppDispatch, useAppSelector } from "../../stores/hooks";
 import { addJournal, updateJournal } from "../../stores/slices/journalsSlice";
 import { Journal } from "../../types";
 import { Alert } from "../../utils/alert";
-import { useAuth } from "../../utils/authContext";
 
 
 const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
@@ -36,7 +35,8 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  const { encryptionKey } = useAuth();
+  // const { encryptionKey } = useAuth();
+  const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
 
 
   const journalId = route.params?.journalId || null;
