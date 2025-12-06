@@ -1,4 +1,4 @@
-import { logout } from "@/src/stores/slices/authSlice";
+import { ResetStorage } from "@/src/services/unifiedStorageService";
 import React, { useState } from "react";
 import { Alert, ScrollView, StyleSheet, Switch, View } from "react-native";
 import {
@@ -113,37 +113,36 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </Text>
 
           <View style={styles.settingRow}>
-
-          <View style={{
-            flex:1,
-            justifyContent:"center",
-            alignItems:"center",
-            
-          }}>
-            {/* <View style={styles.settingInfo}>
+            <View
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {/* <View style={styles.settingInfo}>
               <Text variant="titleMedium">Theme</Text>
               <Text variant="bodyMedium" style={styles.settingDescription}>
                 App appearance mode
               </Text>
             </View>
              */}
-            <View style={styles.themeButtons}>
-              {(["light", "dark", "auto"] as const).map((themeOption) => (
-                <Button
-                  key={themeOption}
-                  mode={
-                    settings.theme === themeOption ? "contained" : "outlined"
-                  }
-                  onPress={() => dispatch(setTheme(themeOption))}
-                  style={styles.themeButton}
-                  compact
-                >
-                  {themeOption.charAt(0).toUpperCase() + themeOption.slice(1)}
-                </Button>
-              ))}
+              <View style={styles.themeButtons}>
+                {(["light", "dark", "auto"] as const).map((themeOption) => (
+                  <Button
+                    key={themeOption}
+                    mode={
+                      settings.theme === themeOption ? "contained" : "outlined"
+                    }
+                    onPress={() => dispatch(setTheme(themeOption))}
+                    style={styles.themeButton}
+                    compact
+                  >
+                    {themeOption.charAt(0).toUpperCase() + themeOption.slice(1)}
+                  </Button>
+                ))}
+              </View>
             </View>
-          </View>
-
           </View>
         </View>
 
@@ -232,11 +231,14 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View
             style={{
               display: "flex",
-              flexDirection: "row",
-              justifyContent: "space-between",
+              flexDirection: "column",
+              justifyContent: "space-around",
+              gap: 12,
               marginBottom: 20,
             }}
           >
+           
+            {/* Change Password */}
             <Button
               mode="outlined"
               onPress={() => setShowPasswordDialog(true)}
@@ -246,28 +248,37 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               Change Password
             </Button>
             <Button
-              mode="contained"
-              onPress={() => dispatch(logout())}
-              style={[styles.logoutButton, { backgroundColor: "orange" }]}
-              textColor={theme.colors.onError}
-              icon="logout"
+              mode="outlined"
+              style={{
+                flex: 1,
+                borderColor: theme.colors.error,
+                marginVertical: 10,
+              }}
+              onPress={async () => {
+                Alert.alert(
+                  "Destroy Database!",
+                  "Are you sure you want to destroy DB everything will be reset.",
+                  [
+                    {
+                      text: "Cancel",
+                      onPress: () => console.log("Destroy canceled"),
+                    },
+                    {
+                      text: "Yes",
+                      onPress: () => {
+                        ResetStorage();
+                        navigation.goBack();
+                      },
+                    },
+                  ],
+                );
+              }}
+              textColor={theme.colors.error}
+              icon="hammer"
             >
-              Logout
+              Reset and Destroy Data
             </Button>
-            {/* Change Password */}
           </View>
-          <Button
-            mode="contained"
-            onPress={() => dispatch(logout())}
-            style={[
-              styles.logoutButton,
-              { backgroundColor: theme.colors.error },
-            ]}
-            textColor={theme.colors.onError}
-            icon="hammer"
-          >
-            Reset and Destroy Data
-          </Button>
         </View>
 
         {/* About Section */}
@@ -322,81 +333,26 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       </Portal>
 
       {/* Change Password Dialog */}
-      <Portal>
-        <Dialog
-          visible={showPasswordDialog}
-          onDismiss={() => setShowPasswordDialog(false)}
-        >
-          <Dialog.Title>Change Password</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="Current Password"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry={!showCurrentPassword}
-              mode="outlined"
-              style={styles.dialogInput}
-              right={
-                <TextInput.Icon
-                  icon={showCurrentPassword ? "eye-off" : "eye"}
-                  onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                />
-              }
-            />
-
-            <TextInput
-              label="New Password"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry={!showNewPassword}
-              mode="outlined"
-              style={styles.dialogInput}
-              error={!isPasswordValid && newPassword.length > 0}
-              right={
-                <TextInput.Icon
-                  icon={showNewPassword ? "eye-off" : "eye"}
-                  onPress={() => setShowNewPassword(!showNewPassword)}
-                />
-              }
-            />
-            {!isPasswordValid && newPassword.length > 0 && (
-              <HelperText type="error">
-                Password must be at least 8 characters
-              </HelperText>
-            )}
-
-            <TextInput
-              label="Confirm New Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              mode="outlined"
-              style={styles.dialogInput}
-              error={!passwordsMatch && confirmPassword.length > 0}
-              right={
-                <TextInput.Icon
-                  icon={showConfirmPassword ? "eye-off" : "eye"}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                />
-              }
-            />
-            {!passwordsMatch && confirmPassword.length > 0 && (
-              <HelperText type="error">Passwords do not match</HelperText>
-            )}
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowPasswordDialog(false)}>Cancel</Button>
-            <Button
-              mode="contained"
-              onPress={handleChangePassword}
-              loading={isSavingPassword}
-              disabled={!isPasswordValid || !passwordsMatch || isSavingPassword}
-            >
-              Change Password
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      {ResetPassword(
+        showPasswordDialog,
+        setShowPasswordDialog,
+        currentPassword,
+        setCurrentPassword,
+        showCurrentPassword,
+        setShowCurrentPassword,
+        newPassword,
+        setNewPassword,
+        showNewPassword,
+        isPasswordValid,
+        setShowNewPassword,
+        confirmPassword,
+        setConfirmPassword,
+        showConfirmPassword,
+        passwordsMatch,
+        setShowConfirmPassword,
+        handleChangePassword,
+        isSavingPassword,
+      )}
     </SafeAreaView>
   );
 };
@@ -436,20 +392,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   themeButton: {
-    minWidth:80
+    minWidth: 80,
   },
   timeoutButton: {
     minWidth: 120,
   },
   passwordButton: {
-    marginTop: 8,
+    flex: 1,
   },
   timeInput: {
     minWidth: 100,
   },
   aboutCard: {
     padding: 20,
-    // backgroundColor: "#f5f5f5",
+    marginBottom: 320,
     borderRadius: 12,
     alignItems: "center",
   },
@@ -461,8 +417,106 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   logoutButton: {
-    marginTop: 8,
+    flex: 1,
   },
 });
 
 export default SettingsScreen;
+function ResetPassword(
+  showPasswordDialog: boolean,
+  setShowPasswordDialog: React.Dispatch<React.SetStateAction<boolean>>,
+  currentPassword: string,
+  setCurrentPassword: React.Dispatch<React.SetStateAction<string>>,
+  showCurrentPassword: boolean,
+  setShowCurrentPassword: React.Dispatch<React.SetStateAction<boolean>>,
+  newPassword: string,
+  setNewPassword: React.Dispatch<React.SetStateAction<string>>,
+  showNewPassword: boolean,
+  isPasswordValid: boolean,
+  setShowNewPassword: React.Dispatch<React.SetStateAction<boolean>>,
+  confirmPassword: string,
+  setConfirmPassword: React.Dispatch<React.SetStateAction<string>>,
+  showConfirmPassword: boolean,
+  passwordsMatch: boolean,
+  setShowConfirmPassword: React.Dispatch<React.SetStateAction<boolean>>,
+  handleChangePassword: () => Promise<void>,
+  isSavingPassword: boolean,
+) {
+  return (
+    <Portal>
+      <Dialog
+        visible={showPasswordDialog}
+        onDismiss={() => setShowPasswordDialog(false)}
+      >
+        <Dialog.Title>Change Password</Dialog.Title>
+        <Dialog.Content>
+          <TextInput
+            label="Current Password"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry={!showCurrentPassword}
+            mode="outlined"
+            style={styles.dialogInput}
+            right={
+              <TextInput.Icon
+                icon={showCurrentPassword ? "eye-off" : "eye"}
+                onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+              />
+            }
+          />
+
+          <TextInput
+            label="New Password"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            secureTextEntry={!showNewPassword}
+            mode="outlined"
+            style={styles.dialogInput}
+            error={!isPasswordValid && newPassword.length > 0}
+            right={
+              <TextInput.Icon
+                icon={showNewPassword ? "eye-off" : "eye"}
+                onPress={() => setShowNewPassword(!showNewPassword)}
+              />
+            }
+          />
+          {!isPasswordValid && newPassword.length > 0 && (
+            <HelperText type="error">
+              Password must be at least 8 characters
+            </HelperText>
+          )}
+
+          <TextInput
+            label="Confirm New Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry={!showConfirmPassword}
+            mode="outlined"
+            style={styles.dialogInput}
+            error={!passwordsMatch && confirmPassword.length > 0}
+            right={
+              <TextInput.Icon
+                icon={showConfirmPassword ? "eye-off" : "eye"}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              />
+            }
+          />
+          {!passwordsMatch && confirmPassword.length > 0 && (
+            <HelperText type="error">Passwords do not match</HelperText>
+          )}
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button onPress={() => setShowPasswordDialog(false)}>Cancel</Button>
+          <Button
+            mode="contained"
+            onPress={handleChangePassword}
+            loading={isSavingPassword}
+            disabled={!isPasswordValid || !passwordsMatch || isSavingPassword}
+          >
+            Change Password
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+    </Portal>
+  );
+}

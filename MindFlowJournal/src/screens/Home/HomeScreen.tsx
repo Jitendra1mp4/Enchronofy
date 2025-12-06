@@ -1,25 +1,36 @@
-import { useFocusEffect } from '@react-navigation/native';
-import { format, subDays } from 'date-fns';
-import React, { useEffect, useState } from 'react';
-import { Animated, ScrollView, StyleSheet, View } from 'react-native';
-import { Calendar, DateData } from 'react-native-calendars';
-import { Button, Card, Chip, Text, useTheme } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { calculateLongestStreak, getMarkedDates } from '../../services/streakService';
-import { listJournals } from '../../services/unifiedStorageService';
-import { useAppDispatch, useAppSelector } from '../../stores/hooks';
-import { setJournals, setLongestStreak } from '../../stores/slices/journalsSlice';
+import { useFocusEffect } from "@react-navigation/native";
+import { format, subDays } from "date-fns";
+import React, { useEffect, useState } from "react";
+import {
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
+import { Calendar, DateData } from "react-native-calendars";
+import { Button, Card, Chip, Text, useTheme } from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  calculateLongestStreak,
+  getMarkedDates,
+} from "../../services/streakService";
+import { listJournals } from "../../services/unifiedStorageService";
+import { useAppDispatch, useAppSelector } from "../../stores/hooks";
+import {
+  setJournals,
+  setLongestStreak,
+} from "../../stores/slices/journalsSlice";
 
 const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
-    const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
+  const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
 
-
-  const currentStreak = useAppSelector(state => state.journals.currentStreak);
-  const longestStreak = useAppSelector(state => state.journals.longestStreak);
-  const journals = useAppSelector(state => state.journals.journals);
+  const currentStreak = useAppSelector((state) => state.journals.currentStreak);
+  const longestStreak = useAppSelector((state) => state.journals.longestStreak);
+  const journals = useAppSelector((state) => state.journals.journals);
 
   const [markedDates, setMarkedDates] = useState<any>({});
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -31,7 +42,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       updateMarkedDates();
-    }, [journals])
+    }, [journals]),
   );
 
   useEffect(() => {
@@ -58,12 +69,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       const loadedJournals = await listJournals(encryptionKey);
       dispatch(setJournals(loadedJournals));
-      
+
       // Calculate and store longest streak
       const longest = calculateLongestStreak(loadedJournals);
       dispatch(setLongestStreak(longest));
     } catch (error) {
-      console.error('Error loading journals:', error);
+      console.error("Error loading journals:", error);
     }
   };
 
@@ -73,12 +84,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleDayPress = (day: DateData) => {
-    navigation.navigate('DateJournalList', { selectedDate: day.dateString });
+    navigation.navigate("DateJournalList", { selectedDate: day.dateString });
   };
 
   const handleCreateJournalForToday = () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    navigation.navigate('JournalEditor', { selectedDate: today });
+    const today = format(new Date(), "yyyy-MM-dd");
+    navigation.navigate("JournalEditor", { selectedDate: today });
   };
 
   // Get last 3 days of entries
@@ -86,13 +97,13 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     const last3Days = [];
     for (let i = 0; i < 3; i++) {
       const date = subDays(new Date(), i);
-      const dateStr = format(date, 'yyyy-MM-dd');
+      const dateStr = format(date, "yyyy-MM-dd");
       const count = journals.filter(
-        j => format(new Date(j.date), 'yyyy-MM-dd') === dateStr
+        (j) => format(new Date(j.date), "yyyy-MM-dd") === dateStr,
       ).length;
       last3Days.push({
         dateKey: dateStr,
-        date: format(date, 'MMM dd'),
+        date: format(date, "MMM dd"),
         count,
         isToday: i === 0,
       });
@@ -105,9 +116,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={['top', 'bottom']}
+      edges={["top", "bottom"]}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: 16 }]}
       >
         {/* Streak and Journal Count Row */}
@@ -115,22 +126,22 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Card.Content>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-               
-
                 <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
                   <Text variant="displaySmall" style={styles.statNumber}>
                     {currentStreak}
                   </Text>
                 </Animated.View>
                 <Text variant="bodyMedium">🔥 Current Streak</Text>
-               
               </View>
-              <View style={styles.statItem}>
+              <Pressable
+                style={styles.statItem}
+                onPress={() => navigation.navigate("JournalList")}
+              >
                 <Text variant="displaySmall" style={styles.statNumber}>
                   {journals.length}
                 </Text>
                 <Text variant="bodyMedium">📝 Total Entries</Text>
-              </View>
+              </Pressable>
             </View>
           </Card.Content>
         </Card>
@@ -145,24 +156,33 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {last3Days.map((day) => (
                 <View key={day.dateKey} style={styles.dayCard}>
                   <Text variant="bodySmall" style={styles.dayLabel}>
-                    {day.isToday ? 'Today' : day.date}
+                    {day.isToday ? "Today" : day.date}
                   </Text>
                   <Text
                     variant="headlineMedium"
                     style={[
                       styles.dayCount,
-                      { color: day.count > 0 ? theme.colors.primary : theme.colors.outline },
+                      {
+                        color:
+                          day.count > 0
+                            ? theme.colors.primary
+                            : theme.colors.outline,
+                      },
                     ]}
                   >
-                    {day.count > 0 ? '✓' : '—'}
+                    {day.count > 0 ? "✓" : "—"}
                   </Text>
                   <Text variant="bodySmall">
-                    {day.count} {day.count === 1 ? 'entry' : 'entries'}
+                    {day.count} {day.count === 1 ? "entry" : "entries"}
                   </Text>
                 </View>
               ))}
             </View>
-            <Chip icon="trophy" compact style={[styles.bestChip,{marginHorizontal:20}]}>
+            <Chip
+              icon="trophy"
+              compact
+              style={[styles.bestChip, { marginHorizontal: 20 }]}
+            >
               Longest Strike: {longestStreak}
             </Chip>
           </Card.Content>
@@ -189,9 +209,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 arrowColor: theme.colors.primary,
                 monthTextColor: theme.colors.onSurface,
                 indicatorColor: theme.colors.primary,
-                textDayFontWeight: '400',
-                textMonthFontWeight: 'bold',
-                textDayHeaderFontWeight: '600',
+                textDayFontWeight: "400",
+                textMonthFontWeight: "bold",
+                textDayHeaderFontWeight: "600",
                 textDayFontSize: 16,
                 textMonthFontSize: 18,
                 textDayHeaderFontSize: 14,
@@ -206,7 +226,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <View style={styles.actionsRow}>
               <Button
                 mode="outlined"
-                onPress={() => navigation.navigate('JournalList')}
+                onPress={() => navigation.navigate("JournalList")}
                 style={styles.actionButton}
                 icon="book-open-variant"
                 compact
@@ -229,14 +249,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={styles.bottomNav}>
           <Button
             mode="text"
-            onPress={() => navigation.navigate('Export')}
+            onPress={() => navigation.navigate("Export")}
             icon="export"
           >
             Export
           </Button>
           <Button
             mode="text"
-            onPress={() => navigation.navigate('Settings')}
+            onPress={() => navigation.navigate("Settings")}
             icon="cog"
           >
             Settings
@@ -259,30 +279,30 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     marginBottom: 16,
-    textAlign:"center"
+    textAlign: "center",
   },
   statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   statNumber: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
   bestChip: {
     marginTop: 8,
   },
   daysRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   dayCard: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 12,
   },
   dayLabel: {
@@ -290,21 +310,21 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   dayCount: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     gap: 12,
   },
   actionButton: {
     flex: 1,
   },
   bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 24,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginVertical: 24,
   },
 });
 

@@ -1,3 +1,4 @@
+import { getMarkdownStyles } from '@/src/utils/markdownStyles';
 import { format } from 'date-fns';
 import React, { useEffect, useState } from 'react';
 import {
@@ -112,14 +113,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
 
   // Define Markdown styles based on current theme
-  const markdownStyles = {
-    body: { color: theme.colors.onBackground, fontSize: 16, lineHeight: 24 },
-    heading1: { color: theme.colors.primary, marginVertical: 10, fontSize: 24, fontWeight: 'bold' },
-    heading2: { color: theme.colors.secondary, marginVertical: 8, fontSize: 20, fontWeight: 'bold' },
-    paragraph: { marginBottom: 10 },
-    code_block: { backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, padding: 8 },
-    blockquote: { borderLeftColor: theme.colors.primary, borderLeftWidth: 4, paddingLeft: 10, marginVertical: 5, fontStyle: 'italic' },
-  };
+
 
 
   if (isLoading) {
@@ -150,6 +144,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
     );
   }
 
+  const markdownStyles = getMarkdownStyles(theme);
 
   const dateObj = new Date(journal.date);
   const formattedDate = format(dateObj, 'EEEE, MMMM dd, yyyy');
@@ -231,8 +226,20 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
 
         <View style={styles.actions}>
-          <Button
-            mode="contained"
+          <Chip
+            mode="outlined"
+            onPress={handleDelete}
+            style={styles.actionButton}
+            // backgroundColor={theme.colors.errorContainer}
+            // textColor={theme.colors.error}
+            icon="delete"
+            disabled={isDeleting}
+            // loading={isDeleting}
+          >
+            Delete
+          </Chip>
+          <Chip
+            // mode="contained"
             onPress={() =>
               navigation.navigate('JournalEditor', { journalId: journal.id })
             }
@@ -240,19 +247,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             icon="pencil"
           >
             Edit
-          </Button>
-          <Button
-            mode="outlined"
-            onPress={handleDelete}
-            style={styles.actionButton}
-            buttonColor={theme.colors.errorContainer}
-            textColor={theme.colors.error}
-            icon="delete"
-            disabled={isDeleting}
-            loading={isDeleting}
-          >
-            Delete
-          </Button>
+          </Chip>
         </View>
       </ScrollView>
 
@@ -334,11 +329,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     marginTop: 16,
   },
   actionButton: {
-    flex: 1,
     marginHorizontal: 4,
   },
   modalContainer: {

@@ -15,18 +15,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import APP_CONFIG from '../../config/appConfig';
 import {
   exportAsJSON,
-  exportAsPDF,
   exportAsMarkdown,
+  exportAsPDF,
   saveTextFile,
   shareFile,
 } from '../../services/exportService';
 import { useAppSelector } from '../../stores/hooks';
 import { Alert } from '../../utils/alert';
-import { useAuth } from '../../utils/authContext';
+
 
 const ExportScreen: React.FC = () => {
   const theme = useTheme();
-  const { encryptionKey } = useAuth();
+  // const { encryptionKey } = useAuth();
+  const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
+
+
   const journals = useAppSelector(state => state.journals.journals);
 
   const [startDate, setStartDate] = useState('');

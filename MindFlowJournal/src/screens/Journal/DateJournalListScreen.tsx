@@ -1,30 +1,27 @@
-import { ExportModal } from '@/src/components/common/ExportModal';
-import { useFocusEffect } from '@react-navigation/native';
-import { format, parseISO } from 'date-fns';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { getMarkdownStyles } from "@/src/utils/markdownStyles";
+import { useFocusEffect } from "@react-navigation/native";
+import { format, parseISO } from "date-fns";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import React, { useEffect, useState } from "react";
+import { Alert, FlatList, StyleSheet, View } from "react-native";
+import Markdown from "react-native-markdown-display";
+import { Button, Card, Chip, FAB, Text, useTheme } from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  Button,
-  Card,
-  Chip,
-  FAB,
-  IconButton,
-  Text,
-  useTheme,
-} from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { exportAsJSON, exportAsPDF, exportAsMarkdown } from '../../services/exportService';
-import { useAppSelector } from '../../stores/hooks';
-import { Journal } from '../../types';
+  exportAsJSON,
+  exportAsMarkdown,
+  exportAsPDF,
+} from "../../services/exportService";
+import { useAppSelector } from "../../stores/hooks";
+import { Journal } from "../../types";
 
 const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
   route,
 }) => {
   const theme = useTheme();
-  const journals = useAppSelector(state => state.journals.journals);
+  const journals = useAppSelector((state) => state.journals.journals);
   const { selectedDate } = route.params || {};
 
   const [journalsForDate, setJournalsForDate] = useState<Journal[]>([]);
@@ -32,12 +29,14 @@ const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const [showExportModal, setShowExportModal] = useState(false);
 
+  const markdownStyles = getMarkdownStyles(theme);
+
   useFocusEffect(
     React.useCallback(() => {
       if (selectedDate) {
         loadJournalsForDate(selectedDate);
       }
-    }, [journals, selectedDate])
+    }, [journals, selectedDate]),
   );
 
   useEffect(() => {
@@ -46,21 +45,96 @@ const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   }, [selectedDate]);
 
+  const JournalList = ({ item, index }: { item: Journal; index: number }) => {
+    const dateObj = new Date(item.date);
+    const formattedDate = format(dateObj, "MMM dd, yyyy");
+    const formattedTime = format(dateObj, "hh:mm a");
+    const hasImages = item.images && item.images.length > 0;
+
+const previewText = item.text.length > 50 
+    ? item.text.substring(0, 50) + '...' 
+    : item.text;
+
+    const getCardColor = (index: number) => {
+      // Alternate colors for visual variety
+      const colors = [
+        "#c5ffe4ff",
+        "#fff3ceff",
+        "#ffcff3ff",
+        "#d1e0ffff",
+        "#ffd3d3ff",
+      ];
+      return colors[index % colors.length];
+    };
+
+    return (
+      <Card
+        style={[styles.journalCard, { backgroundColor: getCardColor(index) }]}
+        onPress={() =>
+          navigation.navigate("JournalDetail", { journalId: item.id })
+        }
+      >
+        <Card.Content>
+          {item.title && (
+            <Text variant="titleMedium" style={styles.title}>
+              {item.title}
+            </Text>
+          )}
+          <View style={styles.dateContainer}>
+            <Chip
+              icon="calendar"
+              style={{ backgroundColor: "#ffffff67" }}
+              textStyle={{ color: "#444" }}
+              compact
+            >
+              {formattedDate}
+            </Chip>
+            {formattedTime && (
+              <Chip
+                icon="clock-outline"
+                compact
+                style={{ backgroundColor: "#ffffff67", marginLeft: 8 }}
+                textStyle={{ color: "#444" }}
+              >
+                {formattedTime}
+              </Chip>
+            )}
+            {hasImages && (
+              <Chip icon="image" compact style={styles.imageChip}>
+                {item.images!.length}
+              </Chip>
+            )}
+          </View>
+          {/*         
+        <Text variant="bodyMedium" numberOfLines={3} style={styles.preview}>
+          {item.text}
+        </Text> */}
+          <View style={styles.preview}  >
+            <Markdown style={{ ...markdownStyles }}>{previewText}</Markdown>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
+
   const loadJournalsForDate = (dateKey: string) => {
-    const journalsForDate = journals.filter(j => {
+    const journalsForDate = journals.filter((j) => {
       const date = new Date(j.date);
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       const journalDateKey = `${year}-${month}-${day}`;
       return journalDateKey === dateKey;
     });
     setJournalsForDate(journalsForDate);
   };
 
-  const handleExport = async (exportFormat: 'json' | 'text' | 'pdf') => {
+  const handleExport = async (exportFormat: "json" | "text" | "pdf") => {
     if (journalsForDate.length === 0) {
-      Alert.alert('No Journals', 'There are no journals to export for this date.');
+      Alert.alert(
+        "No Journals",
+        "There are no journals to export for this date.",
+      );
       return;
     }
 
@@ -70,20 +144,20 @@ const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       let fileName: string;
       let mimeType: string;
 
-      const dateFormatted = format(parseISO(selectedDate), 'yyyy-MM-dd');
-      
-      if (exportFormat === 'json') {
+      const dateFormatted = format(parseISO(selectedDate), "yyyy-MM-dd");
+
+      if (exportFormat === "json") {
         const content = await exportAsJSON(journalsForDate);
         fileName = `journals-${dateFormatted}.json`;
-        mimeType = 'application/json';
+        mimeType = "application/json";
         fileUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, content, {
           encoding: FileSystem.EncodingType.UTF8,
         });
-      } else if (exportFormat === 'text') {
+      } else if (exportFormat === "text") {
         const content = await exportAsMarkdown(journalsForDate);
         fileName = `journals-${dateFormatted}.md`;
-        mimeType = 'text/plain';
+        mimeType = "text/plain";
         fileUri = `${FileSystem.documentDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, content, {
           encoding: FileSystem.EncodingType.UTF8,
@@ -91,86 +165,40 @@ const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       } else {
         // PDF returns a URI directly
         fileUri = await exportAsPDF(journalsForDate);
-        mimeType = 'application/pdf';
+        mimeType = "application/pdf";
       }
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
           mimeType,
-          dialogTitle: `Export Journals - ${format(parseISO(selectedDate), 'MMMM dd, yyyy')}`,
+          dialogTitle: `Export Journals - ${format(parseISO(selectedDate), "MMMM dd, yyyy")}`,
         });
       } else {
-        Alert.alert('Export Complete', `File saved to: ${fileUri}`);
+        Alert.alert("Export Complete", `File saved to: ${fileUri}`);
       }
     } catch (error) {
-      console.error('Export error:', error);
-      Alert.alert('Export Failed', 'Failed to export journals. Please try again.');
+      console.error("Export error:", error);
+      Alert.alert(
+        "Export Failed",
+        "Failed to export journals. Please try again.",
+      );
     } finally {
       setIsExporting(false);
     }
   };
 
   const showExportOptions = () => {
-    setShowExportModal(true) ;
-  };
-
-  const renderJournalItem = ({ item }: { item: Journal }) => {
-    const time = format(parseISO(item.date), 'hh:mm a');
-    const hasImages = item.images && item.images.length > 0;
-
-    return (
-      <Card
-        style={styles.journalCard}
-        onPress={() => navigation.navigate('JournalDetail', { journalId: item.id })}
-      >
-
-        <ExportModal
-          visible={showExportModal}
-          journalsForDate={journalsForDate}
-          selectedDate={selectedDate}
-          onExport={handleExport}
-          onClose={() => setShowExportModal(false)}
-        />
-
-        <Card.Content>
-          <View style={styles.journalHeader}>
-            <View style={styles.journalTitleRow}>
-              {item.title && (
-                <Text variant="titleMedium" style={styles.journalTitle}>
-                  {item.title}
-                </Text>
-              )}
-              <Chip icon="clock-outline" compact style={styles.timeChip}>
-                {time}
-              </Chip>
-            {hasImages && (
-              <Chip icon="image" compact style={styles.imageIndicator}>
-                {item.images!.length} {item.images!.length === 1 ? 'image' : 'images'}
-              </Chip>
-            )}
-            </View>
-            <IconButton
-              icon="chevron-right"
-              size={20}
-              onPress={() => navigation.navigate('JournalDetail', { journalId: item.id })}
-            />
-          </View>
-          <Text variant="bodyMedium" numberOfLines={2} style={styles.journalPreview}>
-            {item.text}
-          </Text>
-        </Card.Content>
-      </Card>
-    );
+    setShowExportModal(true);
   };
 
   const selectedDateFormatted = selectedDate
-    ? format(parseISO(selectedDate), 'EEEE, MMMM dd, yyyy')
-    : '';
+    ? format(parseISO(selectedDate), "EEEE, MMMM dd, yyyy")
+    : "";
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={['top', 'bottom']}
+      edges={["top", "bottom"]}
     >
       {/* Header Section */}
       <Card style={styles.headerCard}>
@@ -181,8 +209,8 @@ const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                 {selectedDateFormatted}
               </Text>
               <Text variant="bodySmall" style={styles.entryCount}>
-                {journalsForDate.length}{' '}
-                {journalsForDate.length === 1 ? 'entry' : 'entries'}
+                {journalsForDate.length}{" "}
+                {journalsForDate.length === 1 ? "entry" : "entries"}
               </Text>
             </View>
             <Button
@@ -213,19 +241,18 @@ const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       ) : (
         <FlatList
           data={journalsForDate}
-          renderItem={renderJournalItem}
-          keyExtractor={item => item.id}
+          renderItem={JournalList}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.journalList, { paddingBottom: 80 }]}
         />
       )}
 
       <FAB
-        icon="plus"
+        icon="pencil"
         style={styles.fab}
-        onPress={() => navigation.navigate('JournalEditor', { selectedDate })}
+        onPress={() => navigation.navigate("JournalEditor", { selectedDate })}
         label="New Entry"
       />
-
     </SafeAreaView>
   );
 };
@@ -239,16 +266,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   headerTextContainer: {
     flex: 1,
     marginRight: 8,
   },
   headerTitle: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   entryCount: {
     opacity: 0.7,
@@ -261,19 +288,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   journalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   journalTitleRow: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
   },
   journalTitle: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginRight: 8,
   },
   timeChip: {
@@ -284,14 +311,14 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   imageIndicator: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   emptyCard: {
     margin: 16,
     marginTop: 24,
   },
   emptyContent: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 32,
   },
   emptyText: {
@@ -301,13 +328,29 @@ const styles = StyleSheet.create({
   emptySubtext: {
     opacity: 0.5,
   },
+
+  title: {
+    marginBottom: 8,
+    fontWeight: "bold",
+  },
+
+  dateContainer: {
+    flexDirection: "row",
+    marginBottom: 12,
+    flexWrap: "wrap",
+  },
+  preview: {
+    opacity: 0.8,
+  },
+  imageChip: {
+    marginLeft: 8,
+  },
   fab: {
-    position: 'absolute',
+    position: "absolute",
     margin: 16,
-    right: 0,
-    bottom: 0,
+    right: 20,
+    bottom: 50,
   },
 });
 
 export default DateJournalListScreen;
-

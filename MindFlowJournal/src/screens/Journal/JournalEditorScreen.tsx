@@ -1,3 +1,4 @@
+import { getMarkdownStyles } from "@/src/utils/markdownStyles";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useState } from "react";
@@ -12,10 +13,16 @@ import {
   View,
 } from "react-native";
 import Markdown from "react-native-markdown-display"; // [web:2][web:10]
-import { Button, HelperText, Switch, Text, TextInput, useTheme } from "react-native-paper";
 import {
-  SafeAreaView,
-} from "react-native-safe-area-context";
+  Button,
+  Chip,
+  HelperText,
+  Switch,
+  Text,
+  TextInput,
+  useTheme,
+} from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { v4 as uuidv4 } from "uuid";
 import {
   base64ToDataUri,
@@ -28,7 +35,6 @@ import { addJournal, updateJournal } from "../../stores/slices/journalsSlice";
 import { Journal } from "../../types";
 import { Alert } from "../../utils/alert";
 
-
 const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
   route,
@@ -38,11 +44,9 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   // const { encryptionKey } = useAuth();
   const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
 
-
   const journalId = route.params?.journalId || null;
   const selectedDate = route.params?.selectedDate || null;
   const isAlreadyExist = !!journalId;
-
 
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -50,29 +54,27 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-
   const [isJournalCreated, setIsJournalCreated] = useState(isAlreadyExist);
   const [generatedJournalId, setGeneratedJournalId] = useState(journalId);
   const [isJournalModified, setIsJournalModified] = useState(false);
   const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [imageIds, setImageIds] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   // New state for Markdown Preview toggle
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-
 
   // Request camera permissions on mount
   useEffect(() => {
     const requestPermissions = async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         console.warn("Camera roll permission not granted");
       }
     };
     requestPermissions();
   }, []);
-
 
   const handlePickImage = async () => {
     try {
@@ -84,16 +86,13 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         // style: "contain",
       });
 
-
       if (!result.canceled && result.assets[0]) {
         setIsCompressingImage(true);
         const selectedUri = result.assets[0].uri;
 
-
         // Compress and convert to base64 for optimal storage
         const compressedUri = await compressImage(selectedUri, 1200, 1200, 0.8);
         const base64 = await imageUriToBase64(compressedUri);
-
 
         setImageBase64List([...imageBase64List, base64]);
         setImageIds([...imageIds, uuidv4()]);
@@ -106,41 +105,40 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   };
 
-
   const handleRemoveImage = (index: number) => {
     setImageBase64List(imageBase64List.filter((_, i) => i !== index));
     setImageIds(imageIds.filter((_, i) => i !== index));
   };
 
-
   // This triggers by pressing back from any screen which I am not intended for.
   useFocusEffect(
     useCallback(() => {
-      const onBackPress =  () => {
+      const onBackPress = () => {
         if (!encryptionKey) {
           navigation.goBack();
           return true;
         }
-         handleSave().then(()=>{
+        handleSave().then(() => {
           if (isJournalModified) {
             Alert.alert("Got it!", "🔐Your Journal entry is saved securely");
           }
           navigation.goBack();
-         });
+        });
         return true;
       };
-      const subscription = BackHandler.addEventListener('hardwareBackPress',onBackPress) ;
-      return () => subscription.remove()
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress,
+      );
+      return () => subscription.remove();
     }, [text, title, imageBase64List, encryptionKey, isJournalModified]),
   );
-
 
   useEffect(() => {
     if (isJournalCreated) {
       loadJournal();
     }
   }, [journalId]);
-
 
   useEffect(() => {
     const callSaveAsync = async () => {
@@ -149,10 +147,8 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     callSaveAsync();
   }, [encryptionKey, text, title, imageBase64List]);
 
-
   const loadJournal = async () => {
     if (!encryptionKey) return;
-
 
     setIsLoading(true);
     try {
@@ -175,18 +171,14 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   };
 
-
   const handleSave = async (showAlert = false) => {
-
-
     if (isSaving) return false;
-    
+
     if (!encryptionKey) {
       if (showAlert)
         Alert.alert("Oops!", "Encryption key not found. Please login again.");
       return false;
     }
-
 
     if (!text.trim()) {
       if (showAlert)
@@ -194,19 +186,15 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       return false;
     }
 
-
     setIsSaving(true);
-
 
     try {
       const now = new Date().toISOString();
       let existingJournal: Journal | null = null;
 
-
       if (generatedJournalId) {
         existingJournal = await getJournal(generatedJournalId, encryptionKey);
       }
-
 
       let journalDate = now;
       if (existingJournal?.date) {
@@ -216,7 +204,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         const dateObj = new Date(year, month - 1, day, 12);
         journalDate = dateObj.toISOString();
       }
-
 
       const journal: Journal = {
         id: generatedJournalId || uuidv4(),
@@ -229,9 +216,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         images: imageBase64List.length > 0 ? imageBase64List : undefined,
       };
 
-
       await saveJournal(journal, encryptionKey);
-
 
       if (isJournalCreated) {
         dispatch(updateJournal(journal));
@@ -239,13 +224,10 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         dispatch(addJournal(journal));
       }
 
-
       setIsJournalCreated(true);
       setIsJournalModified(true);
 
-
       if (!generatedJournalId) setGeneratedJournalId(journal.id);
-
 
       if (showAlert) {
         Alert.alert("Yep!", "🔐Your Journal entry is saved securely!");
@@ -262,25 +244,13 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     }
   };
 
-
   // Define Markdown styles based on current theme
-  const markdownStyles = {
-    body: { color: theme.colors.onBackground, fontSize: 16 },
-    heading1: { color: theme.colors.primary, marginVertical: 10 },
-    heading2: { color: theme.colors.secondary, marginVertical: 8 },
-    code_block: { color:"red",  backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, padding: 3 },
-    blockquote: { color:theme.colors.primary, borderLeftColor: theme.colors.primaryContainer, borderLeftWidth: 1, paddingLeft: 1, marginVertical: 1 },
-  };
-
-
+  const markdownStyles = getMarkdownStyles(theme);
   if (isLoading) {
     return (
       <SafeAreaView
-        style={[
-          styles.container,
-          { backgroundColor: theme.colors.background },
-        ]}
-        edges={['top', 'bottom']}
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={["top", "bottom"]}
       >
         <HelperText type="info" style={styles.loadingText}>
           Loading journal...
@@ -289,34 +259,38 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     );
   }
 
-
   return (
     <SafeAreaView
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background },
-      ]}
-      edges={['top', 'bottom']}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={["top", "bottom"]}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: 16 }]}
+          contentContainerStyle={[styles.content]}
           keyboardShouldPersistTaps="handled"
         >
           {/* Editor/Preview Toggle */}
           <View style={styles.toggleContainer}>
-          <Text>
-                    Preview 
-            </Text>
-           <Switch
-            value={isPreviewMode}
-            onValueChange={()=>setIsPreviewMode(!isPreviewMode)}
+            <Text style={styles.previewLabel}>Preview</Text>
+            <Switch
+              style={styles.toggleButton}
+              value={isPreviewMode}
+              onValueChange={() => setIsPreviewMode(!isPreviewMode)}
             />
+
+            <Chip
+              icon="floppy"
+              onPress={async () => await handleSave(true)}
+              style={styles.saveButton}
+              disabled={isSaving || !text.trim()}
+            >
+              {isJournalCreated ? "Saved!" : "Type to save..."}
+            </Chip>
           </View>
-          
+
           <TextInput
             label="Title (optional)"
             value={title}
@@ -327,16 +301,17 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             returnKeyType="next"
           />
 
-
-
-
-
           {isPreviewMode ? (
-             <View style={[styles.previewContainer, { borderColor: theme.colors.outline }]}>
-                <Markdown style={markdownStyles}>
-                   {text || "*Nothing to preview*"}
-                </Markdown>
-             </View>
+            <View
+              style={[
+                styles.previewContainer,
+                { borderColor: theme.colors.outline },
+              ]}
+            >
+              <Markdown style={markdownStyles}>
+                {text || "*Nothing to preview*\n ### Quick Guid\n- start line with # [space] for heading heading.\n- Start line with ## [space] for sub heading and so on.\n - Start line with - [space] for bullet\n- Surround text with * to make it italic\n- Surround text with ** to make it bold."}
+              </Markdown>
+            </View>
           ) : (
             <TextInput
               label="What's on your mind? (Markdown supported)"
@@ -348,7 +323,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
               autoFocus
             />
           )}
-
 
           {/* Image Gallery Section */}
           {imageBase64List.length > 0 && (
@@ -365,7 +339,10 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
                 {imageBase64List.map((base64, index) => {
                   const imageUri = base64ToDataUri(base64);
                   return (
-                    <View key={imageIds[index] || `img-${index}`} style={styles.imageThumbnailContainer}>
+                    <View
+                      key={imageIds[index] || `img-${index}`}
+                      style={styles.imageThumbnailContainer}
+                    >
                       <TouchableOpacity
                         activeOpacity={0.8}
                         onPress={() => setSelectedImage(imageUri)}
@@ -374,10 +351,16 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
                           source={{ uri: imageUri }}
                           style={styles.imageThumbnail}
                           onError={(error) => {
-                            console.log('Failed image URI preview:', imageUri.substring(0, 100));
+                            console.log(
+                              "Failed image URI preview:",
+                              imageUri.substring(0, 100),
+                            );
                           }}
                           onLoad={() => {
-                            console.log('Image loaded successfully in editor:', index);
+                            console.log(
+                              "Image loaded successfully in editor:",
+                              index,
+                            );
                           }}
                         />
                       </TouchableOpacity>
@@ -396,7 +379,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             </View>
           )}
 
-
           {/* Image Picker Button */}
           <Button
             mode="outlined"
@@ -408,20 +390,8 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
           >
             {isCompressingImage ? "Processing..." : "Add Images"}
           </Button>
-
-
-          <Button
-            mode="contained"
-            onPress={async () => await handleSave(true)}
-            style={styles.saveButton}
-            loading={isSaving}
-            disabled={isSaving || !text.trim()}
-          >
-            {isJournalCreated ? "Saved!" : "Start typing, You don't need to save.."}
-          </Button>
         </ScrollView>
       </KeyboardAvoidingView>
-
 
       {/* Full Screen Image Modal */}
       {selectedImage && (
@@ -451,7 +421,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -461,7 +430,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    padding: 16,
+    padding: 10,
     justifyContent: "flex-start",
   },
   titleInput: {
@@ -476,11 +445,15 @@ const styles = StyleSheet.create({
   toggleContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
+    alignItems: "flex-end",
     marginBottom: 8,
     gap: 8,
   },
   toggleButton: {
-    minWidth: 80, 
+    marginBottom: -5,
+  },
+  previewLabel: {
+    marginBottom: 8,
   },
   previewContainer: {
     flex: 1,
@@ -566,6 +539,5 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 });
-
 
 export default JournalEditorScreen;
