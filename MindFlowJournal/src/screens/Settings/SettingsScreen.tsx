@@ -21,14 +21,6 @@ import {
   setTheme,
 } from "../../stores/slices/settingsSlice";
 
-const LOCK_TIMEOUT_OPTIONS = [
-  { label: "30 Seconds", value: 30 * 1000 },
-  { label: "1 Minute", value: 60 * 1000 },
-  { label: "3 Minutes", value: 3 * 60 * 1000 },
-  { label: "5 Minutes", value: 5 * 60 * 1000 },
-  { label: "10 Minutes", value: 10 * 60 * 1000 },
-  { label: "Never", value: 0 }, // 0 = no timeout
-];
 
 const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -89,7 +81,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const getTimeoutLabel = () => {
-    const option = LOCK_TIMEOUT_OPTIONS.find(
+    const option = APPCONFIG.LOCK_TIMEOUT_OPTIONS.find(
       (o) => o.value === settings.autoLockTimeout,
     );
     return option
@@ -189,7 +181,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
 
         {/* Security Section */}
-        <View style={styles.section}>
+        <View style={[styles.section,{marginBottom:220}]}>
           <Text variant="titleLarge" style={styles.sectionTitle}>
             Security
           </Text>
@@ -312,7 +304,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         >
           <Dialog.Title>Select Auto-Lock Timeout</Dialog.Title>
           <Dialog.Content style={{ gap: 8 }}>
-            {LOCK_TIMEOUT_OPTIONS.map((option) => (
+            {APPCONFIG.LOCK_TIMEOUT_OPTIONS.map((option) => (
               <Button
                 key={option.value}
                 mode={
