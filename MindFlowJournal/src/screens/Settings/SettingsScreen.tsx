@@ -21,7 +21,6 @@ import {
   setTheme,
 } from "../../stores/slices/settingsSlice";
 
-
 const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
@@ -92,11 +91,11 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={["top", "bottom"]}
+      edges={["bottom"]}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: 80 }]}
       >
         {/* Appearance Section */}
         <View style={styles.section}>
@@ -181,7 +180,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         </View>
 
         {/* Security Section */}
-        <View style={[styles.section,{marginBottom:220}]}>
+        <View style={[styles.section, { marginBottom: 220 }]}>
           <Text variant="titleLarge" style={styles.sectionTitle}>
             Security
           </Text>
@@ -229,7 +228,6 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               marginBottom: 20,
             }}
           >
-           
             {/* Change Password */}
             <Button
               mode="outlined"
@@ -259,7 +257,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       text: "Yes",
                       onPress: () => {
                         ResetStorage();
-                       navigation.navigate('Signup')
+                        navigation.navigate("Signup");
                       },
                     },
                   ],

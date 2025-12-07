@@ -118,10 +118,10 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={["top", "bottom"]}
+    edges={['bottom']} //  Changed from ['top', 'bottom'] to ['bottom']
     >
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: 16 }]}
+         contentContainerStyle={[styles.content, { paddingBottom: 80 }]} // ✅ Add bottom padding
       >
         {/* Streak and Journal Count Row */}
         <Card style={styles.card}>
@@ -303,10 +303,11 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
   },
-  bottomNav: {
+ bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     marginVertical: 24,
+    paddingBottom: 16, // ✅ Add padding for navigation bar
   },
 });
 

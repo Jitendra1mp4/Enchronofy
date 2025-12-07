@@ -1,6 +1,6 @@
-import { formatDate } from 'date-fns';
-import React, { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { formatDate } from "date-fns";
+import React, { useState } from "react";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
   Card,
@@ -10,30 +10,28 @@ import {
   Text,
   TextInput,
   useTheme,
-} from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import APP_CONFIG from '../../config/appConfig';
+} from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
+import APP_CONFIG from "../../config/appConfig";
 import {
   exportAsJSON,
   exportAsMarkdown,
   exportAsPDF,
   saveTextFile,
   shareFile,
-} from '../../services/exportService';
-import { useAppSelector } from '../../stores/hooks';
-import { Alert } from '../../utils/alert';
-
+} from "../../services/exportService";
+import { useAppSelector } from "../../stores/hooks";
+import { Alert } from "../../utils/alert";
 
 const ExportScreen: React.FC = () => {
   const theme = useTheme();
   // const { encryptionKey } = useAuth();
   const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
 
+  const journals = useAppSelector((state) => state.journals.journals);
 
-  const journals = useAppSelector(state => state.journals.journals);
-
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedAll, setSelectedAll] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -42,7 +40,7 @@ const ExportScreen: React.FC = () => {
       return journals;
     }
 
-    return journals.filter(journal => {
+    return journals.filter((journal) => {
       const journalDate = new Date(journal.date);
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate) : null;
@@ -58,56 +56,59 @@ const ExportScreen: React.FC = () => {
     });
   };
 
-  const handleExport = async (format: 'json' | 'txt' | 'pdf') => {
+  const handleExport = async (format: "json" | "txt" | "pdf") => {
     if (!encryptionKey) {
-      Alert.alert('Oops!', 'Encryption key not found. Please log in again.');
+      Alert.alert("Oops!", "Encryption key not found. Please log in again.");
       return;
     }
 
     const filteredJournals = getFilteredJournals();
 
     if (filteredJournals.length === 0) {
-      Alert.alert('No Journals', 'No journals found to export with the selected filters.');
+      Alert.alert(
+        "No Journals",
+        "No journals found to export with the selected filters.",
+      );
       return;
     }
 
     setIsExporting(true);
 
     try {
-      const timestamp = formatDate(new Date(), 'yyyy-MM-dd-HHmmss');
-      let filename = '';
-      let content = '';
-      let uri = '';
+      const timestamp = formatDate(new Date(), "yyyy-MM-dd-HHmmss");
+      let filename = "";
+      let content = "";
+      let uri = "";
 
       switch (format) {
-        case 'json':
+        case "json":
           filename = `${APP_CONFIG.slug.toLowerCase()}-journals-${timestamp}.json`;
           content = await exportAsJSON(filteredJournals);
           uri = await saveTextFile(content, filename);
           break;
 
-        case 'txt':
+        case "txt":
           filename = `${APP_CONFIG.slug.toLowerCase()}-journals-${timestamp}.md`;
           content = await exportAsMarkdown(filteredJournals);
           uri = await saveTextFile(content, filename);
           break;
 
-        case 'pdf':
+        case "pdf":
           filename = `${APP_CONFIG.slug.toLowerCase()}-journals-${timestamp}.pdf`;
           uri = await exportAsPDF(filteredJournals);
           break;
       }
 
       // On mobile, open share dialog which includes "Save to Files" option
-      if (Platform.OS !== 'web') {
+      if (Platform.OS !== "web") {
         await shareFile(uri, filename);
       }
 
       // Show success message with file info
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         Alert.alert(
-          'Success',
-          `Exported ${filteredJournals.length} journal(s) as ${format.toUpperCase()}\n\nFile downloaded: ${filename}`
+          "Success",
+          `Exported ${filteredJournals.length} journal(s) as ${format.toUpperCase()}\n\nFile downloaded: ${filename}`,
         );
       } else {
         // On mobile, show helpful message after share dialog
@@ -119,8 +120,8 @@ const ExportScreen: React.FC = () => {
         // );
       }
     } catch (error) {
-      console.error('Export error:', error);
-      Alert.alert('Oops!', 'Failed to export journals. Please try again.');
+      console.error("Export error:", error);
+      Alert.alert("Oops!", "Failed to export journals. Please try again.");
     } finally {
       setIsExporting(false);
     }
@@ -131,20 +132,22 @@ const ExportScreen: React.FC = () => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={['top', 'bottom']}
+      edges={["bottom"]} // ✅ Changed from ['top', 'bottom']
     >
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 16 }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: 80 }]}
+      >
         <Card style={styles.card}>
           <Card.Content>
             <Text variant="titleLarge" style={styles.title}>
               Export Your Journals
             </Text>
             <Text variant="bodyMedium" style={styles.description}>
-              Export your journal entries in various formats. You can export all entries or filter by date range.
+              Export your journal entries in various formats. You can export all
+              entries or filter by date range.
             </Text>
           </Card.Content>
         </Card>
-
         {/* Date Range Filter */}
         <Card style={styles.card}>
           <Card.Content>
@@ -154,7 +157,7 @@ const ExportScreen: React.FC = () => {
 
             <View style={styles.checkboxRow}>
               <Checkbox
-                status={selectedAll ? 'checked' : 'unchecked'}
+                status={selectedAll ? "checked" : "unchecked"}
                 onPress={() => setSelectedAll(!selectedAll)}
               />
               <Text
@@ -191,7 +194,6 @@ const ExportScreen: React.FC = () => {
             </Chip>
           </Card.Content>
         </Card>
-
         {/* Export Options */}
         <Card style={styles.card}>
           <Card.Content>
@@ -202,7 +204,7 @@ const ExportScreen: React.FC = () => {
             <Button
               mode="contained"
               icon="code-json"
-              onPress={() => handleExport('json')}
+              onPress={() => handleExport("json")}
               style={styles.exportButton}
               disabled={isExporting || filteredCount === 0}
             >
@@ -215,7 +217,7 @@ const ExportScreen: React.FC = () => {
             <Button
               mode="contained"
               icon="file-document-outline"
-              onPress={() => handleExport('txt')}
+              onPress={() => handleExport("txt")}
               style={styles.exportButton}
               disabled={isExporting || filteredCount === 0}
             >
@@ -228,7 +230,7 @@ const ExportScreen: React.FC = () => {
             <Button
               mode="contained"
               icon="file-pdf-box"
-              onPress={() => handleExport('pdf')}
+              onPress={() => handleExport("pdf")}
               style={styles.exportButton}
               disabled={isExporting || filteredCount === 0}
             >
@@ -248,7 +250,6 @@ const ExportScreen: React.FC = () => {
             )}
           </Card.Content>
         </Card>
-
         {/* Info Card */}
         <Card style={styles.card}>
           <Card.Content>
@@ -264,10 +265,11 @@ const ExportScreen: React.FC = () => {
             <Text variant="bodySmall" style={styles.infoText}>
               • Keep exported files secure as they contain your personal data
             </Text>
-            {Platform.OS !== 'web' && (
+            {Platform.OS !== "web" && (
               <>
                 <Text variant="bodySmall" style={styles.infoText}>
-                  • On mobile: Use "Save to Files" (iOS) or "Save" (Android) in the share dialog
+                  • On mobile: Use "Save to Files" (iOS) or "Save" (Android) in
+                  the share dialog
                 </Text>
                 <Text variant="bodySmall" style={styles.infoText}>
                   • Files are saved to your device's Documents folder
@@ -293,7 +295,7 @@ const styles = StyleSheet.create({
   },
   title: {
     marginBottom: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   description: {
     opacity: 0.7,
@@ -301,11 +303,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginBottom: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
   },
   dateInputs: {
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   countChip: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     marginTop: 12,
   },
   exportButton: {
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 8,
-    textAlign: 'center',
+    textAlign: "center",
     opacity: 0.7,
   },
   infoText: {

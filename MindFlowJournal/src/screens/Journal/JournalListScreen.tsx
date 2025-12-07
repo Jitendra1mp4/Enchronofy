@@ -1,30 +1,24 @@
 import { ExportModal } from "@/src/components/common/ExportModal";
-import {
-  exportAsJSON,
-  exportAsMarkdown,
-  exportAsPDF,
-} from "@/src/services/exportService";
-import { Journal } from "@/src/types";
-import { Alert } from "@/src/utils/alert";
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
+import { getJournalCardStyle } from "@/src/utils/theme";
+import { useFocusEffect } from "@react-navigation/native";
 import { format, parseISO } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import React, { useEffect, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Alert, FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { Card, Chip, FAB, Searchbar, Text, useTheme } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  deleteJournal,
-  listJournals,
-} from "../../services/unifiedStorageService";
+  exportAsJSON,
+  exportAsMarkdown,
+  exportAsPDF,
+} from "../../services/exportService";
+import { deleteJournal, listJournals } from "../../services/unifiedStorageService";
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
-import {
-  deleteJournal as deleteJournalAction,
-  setLoading,
-} from "../../stores/slices/journalsSlice";
-import { getJournalCardStyle } from "../../utils/theme";
+import { deleteJournal as deleteJournalAction, setJournals, setLoading } from "../../stores/slices/journalsSlice";
+import { Journal } from "../../types";
 
 const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -32,356 +26,338 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
 }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  // const { encryptionKey } = useAuth();
   const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
-
-  const { selectedDate } = route.params || "";
-
   const journals = useAppSelector((state) => state.journals.journals);
+  const isGlobalLoading = useAppSelector((state) => state.journals.isLoading);
 
-  const [journalsToList, setJournalsToList] = useState(journals);
+  // Route params
+  const { selectedDate } = route.params || {};
 
-  const isLoading = useAppSelector((state) => state.journals.isLoading);
-
+  // Local state
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  const JournalList = ({ item, index }: { item: Journal; index: number }) => {
+  // SAFE FILTERING - Read-only derived state
+  const filteredJournals = useMemo(() => {
+    let result = [...journals];
+
+    // Filter by selected date (if provided)
+    if (selectedDate) {
+      result = result.filter((journal) => {
+        const journalDate = new Date(journal.date);
+        const year = journalDate.getFullYear();
+        const month = String(journalDate.getMonth() + 1).padStart(2, "0");
+        const day = String(journalDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}` === selectedDate;
+      });
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (journal) =>
+          journal.title?.toLowerCase().includes(query) ||
+          journal.text.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort newest first
+    return result.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [journals, selectedDate, searchQuery]);
+
+  // Load journals from storage
+  const loadJournals = useCallback(async () => {
+    if (!encryptionKey) return;
+    dispatch(setLoading(true));
+    try {
+      const loadedJournals = await listJournals(encryptionKey);
+      dispatch(setJournals(loadedJournals));
+    } catch (error) {
+      console.error("❌ Error loading journals:", error);
+      Alert.alert("Error", "Failed to load journals");
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch, encryptionKey]);
+
+  // Refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadJournals();
+    setRefreshing(false);
+  };
+
+  // Auto-refresh on focus if empty
+  useFocusEffect(
+    useCallback(() => {
+      if (journals.length === 0 && encryptionKey) {
+        loadJournals();
+      }
+    }, [encryptionKey, journals.length, loadJournals])
+  );
+
+  // Export handler
+  const handleExport = async (exportFormat: "json" | "text" | "pdf") => {
+    if (filteredJournals.length === 0) {
+      Alert.alert("Nothing to Export", "No journals match your current filters.");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const dateSuffix = selectedDate || format(new Date(), "yyyy-MM-dd");
+      let fileUri: string;
+      let fileName: string;
+      let mimeType: string;
+
+      if (exportFormat === "json") {
+        const content = await exportAsJSON(filteredJournals);
+        fileName = `journals-${dateSuffix}.json`;
+        mimeType = "application/json";
+        fileUri = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(fileUri, content);
+      } else if (exportFormat === "text") {
+        const content = await exportAsMarkdown(filteredJournals);
+        fileName = `journals-${dateSuffix}.md`;
+        mimeType = "text/markdown";
+        fileUri = `${FileSystem.documentDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(fileUri, content);
+      } else {
+        fileUri = await exportAsPDF(filteredJournals);
+        fileName = `journals-${dateSuffix}.pdf`;
+        mimeType = "application/pdf";
+      }
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, { mimeType, dialogTitle: "Share Journals" });
+      } else {
+        Alert.alert("Export Complete", `File saved:\n${fileUri}`);
+      }
+    } catch (error) {
+      console.error("❌ Export error:", error);
+      Alert.alert("Export Failed", "Could not create export file");
+    } finally {
+      setIsDeleting(false);
+      setShowExportModal(false);
+    }
+  };
+
+  // Delete single journal
+  const handleDeleteJournal = async (journalId: string) => {
+    Alert.alert(
+      "Delete Journal",
+      "This action cannot be undone. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!encryptionKey) return;
+            setIsDeleting(true);
+            try {
+              await deleteJournal(journalId);
+              dispatch(deleteJournalAction(journalId));
+              Alert.alert("Deleted", "Journal entry removed successfully");
+            } catch (error) {
+              console.error("❌ Delete error:", error);
+              Alert.alert("Error", "Failed to delete journal");
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const selectedDateFormatted = selectedDate
+    ? format(parseISO(selectedDate), "EEEE, MMMM do, yyyy")
+    : null;
+
+  // Journal Card Component
+  const JournalCard = ({ item, index }: { item: Journal; index: number }) => {
     const dateObj = new Date(item.date);
     const formattedDate = format(dateObj, "MMM dd, yyyy");
     const formattedTime = format(dateObj, "hh:mm a");
     const hasImages = item.images && item.images.length > 0;
-
     const cardStyle = getJournalCardStyle(theme, index);
-    const previewText =
-      item.text.length > 50 ? item.text.substring(0, 50) + "..." : item.text;
-
     const markdownStyles = getMarkdownStyles(theme);
 
-    const handleDelete = () => {
-      Alert.alert(
-        "Delete Journal Entry",
-        "Are you sure you want to delete this entry? This cannot be undone.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: confirmDelete,
-          },
-        ],
-      );
-    };
-    const confirmDelete = async () => {
-      if (!encryptionKey) return;
-
-      setIsDeleting(true);
-      try {
-        await deleteJournal(item.id);
-        dispatch(deleteJournalAction(item.id));
-        navigation.goBack();
-      } catch (error) {
-        console.error("Error deleting journal:", error);
-        Alert.alert("Error", "Failed to delete journal entry");
-      } finally {
-        setIsDeleting(false);
-      }
-    };
+    const previewText = item.text.length > 100
+      ? item.text.substring(0, 100).replace(/\n/g, " ") + "..."
+      : item.text;
 
     return (
       <Card
-        style={[styles.journalCard, cardStyle]}
+        style={[styles.card, cardStyle]}
         onPress={() =>
           navigation.navigate("JournalDetail", {
             journalId: item.id,
-            backColor: cardStyle.backgroundColor,
+            backColor: cardStyle.backgroundColor as string,
           })
         }
       >
-        <ExportModal
-          visible={showExportModal}
-          journalsList={filteredJournals}
-          selectedDate={selectedDate}
-          onExport={handleExport}
-          onClose={() => setShowExportModal(false)}
-        />
-
         <Card.Content>
           {item.title && (
             <Text variant="titleMedium" style={styles.title}>
               {item.title}
             </Text>
           )}
-          <View style={styles.dateContainer}>
-          </View>
           <View style={styles.preview}>
-            <Markdown style={{ ...markdownStyles }}>{previewText}</Markdown>
-          </View>
-          <View
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Chip
-              icon="calendar"
-              style={{ ...styles.chip }}
-              textStyle={{fontSize:11, color: "#6b6b6bff" }}
-              compact
+            <Markdown
+              style={{
+                ...markdownStyles,
+                body: { fontSize: 14, lineHeight: 20 },
+              }}
             >
-              {formattedDate}
-            </Chip>
-            {formattedTime && (
+              {previewText}
+            </Markdown>
+          </View>
+          <View style={styles.footer}>
+            <View style={styles.meta}>
+              <Chip
+                icon="calendar"
+                style={styles.metaChip}
+                textStyle={styles.chipText}
+                compact
+              >
+                {formattedDate}
+              </Chip>
               <Chip
                 icon="clock-outline"
+                style={styles.metaChip}
+                textStyle={styles.chipText}
                 compact
-                style={{ ...styles.chip }}
-                textStyle={{ fontSize:11, color: "#5c5c5cff" }}
               >
                 {formattedTime}
               </Chip>
-            )}
-            {hasImages && (
-              <Chip icon="image" compact style={{ ...styles.chip }}>
-                {item.images!.length}
-              </Chip>
-            )}
+              {hasImages && (
+                <Chip
+                  icon="image"
+                  style={styles.metaChip}
+                  textStyle={styles.chipText}
+                  compact
+                >
+                  {item.images!.length}
+                </Chip>
+              )}
+            </View>
             <Chip
-              mode="outlined"
-              onPress={handleDelete}
-              style={{
-                ...styles.chip,
-                borderColor: "#e44",
-              }}
-              icon="delete"
-              disabled={isDeleting}
-            >{""}</Chip>
-            <Chip
-              mode="flat"
-              onPress={() =>
-                navigation.navigate("JournalEditor", { journalId: item.id })
-              }
-              style={{ ...styles.chip, borderColor: "green" }}
               icon="pencil"
-            >{""}</Chip>
+              onPress={(e) => {
+                e.stopPropagation();
+                navigation.navigate("JournalEditor", { journalId: item.id });
+              }}
+              style={styles.editChip}
+              compact
+              mode="outlined"
+            >
+              Edit
+            </Chip>
           </View>
         </Card.Content>
       </Card>
     );
   };
 
-  useEffect(() => {
-    const load = async () => {
-      if (selectedDate) loadJournalsForDate(selectedDate);
-      else await loadJournals();
-    };
-
-    load();
-  }, [encryptionKey]);
-
-  const loadJournals = async () => {
-    if (!encryptionKey) return;
-
-    dispatch(setLoading(true));
-    try {
-      const loadedJournals = await listJournals(encryptionKey);
-      // Sort by date (newest first)
-      const sorted = loadedJournals.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-
-      setJournalsToList(sorted);
-      // dispatch(setJournals(sorted));
-    } catch (error) {
-      console.error("Error loading journals:", error);
-    } finally {
-      dispatch(setLoading(false));
-    }
-  };
-
-  const loadJournalsForDate = (dateKey: string) => {
-    const journalsForDate = journalsToList.filter((j) => {
-      const date = new Date(j.date);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      const journalDateKey = `${year}-${month}-${day}`;
-      return journalDateKey === dateKey;
-    });
-
-    const sorted = journalsForDate.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
-
-    setJournalsToList(sorted);
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    if (selectedDate) loadJournalsForDate(selectedDate);
-    else await loadJournals();
-    setRefreshing(false);
-  };
-
-  const filteredJournals = journalsToList.filter((journal) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      journal.title?.toLowerCase().includes(query) ||
-      journal.text.toLowerCase().includes(query)
-    );
-  });
-
-  const selectedDateFormatted = selectedDate
-    ? format(parseISO(selectedDate), "EEEE, MMMM dd, yyyy")
-    : "";
-
-  const handleExport = async (exportFormat: "json" | "text" | "pdf") => {
-    if (journalsToList.length === 0) {
-      Alert.alert("No Journals", "There are no journals to export.");
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      let fileUri: string;
-      let fileName: string;
-      let mimeType: string;
-
-      const dateFormatted = format(parseISO(selectedDate), "yyyy-MM-dd");
-
-      if (exportFormat === "json") {
-        const content = await exportAsJSON(journalsToList);
-        fileName = `journals-${dateFormatted}.json`;
-        mimeType = "application/json";
-        fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        await FileSystem.writeAsStringAsync(fileUri, content, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
-      } else if (exportFormat === "text") {
-        const content = await exportAsMarkdown(journalsToList);
-        fileName = `journals-${dateFormatted}.md`;
-        mimeType = "text/plain";
-        fileUri = `${FileSystem.documentDirectory}${fileName}`;
-        await FileSystem.writeAsStringAsync(fileUri, content, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
-      } else {
-        // PDF returns a URI directly
-        fileUri = await exportAsPDF(journalsToList);
-        mimeType = "application/pdf";
-      }
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType,
-          dialogTitle: `Export Journals - ${format(parseISO(selectedDate), "MMMM dd, yyyy")}`,
-        });
-      } else {
-        Alert.alert("Export Complete", `File saved to: ${fileUri}`);
-      }
-    } catch (error) {
-      console.error("Export error:", error);
-      Alert.alert(
-        "Export Failed",
-        "Failed to export journals. Please try again.",
-      );
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const showExportOptions = () => {
-    setShowExportModal(true);
-  };
-
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={["top", "bottom"]}
     >
-       (
-        <Card
-          style={{
-            ...styles.headerCard,
-            borderColor: theme.colors.secondary,
-            borderWidth: 2,
-          }}
-        >
-          <Card.Content>
-            <View style={styles.headerRow}>
-              <View style={styles.headerTextContainer}>
-                <Text variant="titleLarge" style={styles.headerTitle}>
-                  {selectedDateFormatted??"All Journals"}
-                </Text>
-                <Text variant="bodySmall" style={styles.entryCount}>
-                  {journalsToList.length}{" "}
-                  {journalsToList.length === 1 ? "entry" : "entries"}
-                </Text>
-              </View>
-              <Chip
-                mode="flat"
-                icon="export"
-                onPress={showExportOptions}
-                disabled={isExporting || journalsToList.length === 0}
-              >
-                Export
-              </Chip>
-            </View>
-          </Card.Content>
-        </Card>
-      )
+      {/* Export Modal */}
+      <ExportModal
+        visible={showExportModal}
+        journalsList={filteredJournals}
+        selectedDate={selectedDate || format(new Date(), "yyyy-MM-dd")}
+        onExport={handleExport}
+        onClose={() => setShowExportModal(false)}
+      />
 
-      {journalsToList.length > 0 && (
+      {/* Header */}
+      <Card style={[styles.headerCard, { borderColor: theme.colors.outline }]}>
+        <Card.Content>
+          <View style={styles.headerContent}>
+            <View style={styles.headerText}>
+              <Text variant="headlineSmall" style={styles.headerTitle}>
+                {selectedDateFormatted || "All My Journals"}
+              </Text>
+              <Text variant="bodyMedium" style={styles.subtitle}>
+                {filteredJournals.length} entr{filteredJournals.length === 1 ? "y" : "ies"}
+              </Text>
+            </View>
+            <Chip
+              icon="export-variant"
+              mode="outlined"
+              onPress={() => setShowExportModal(true)}
+              disabled={filteredJournals.length === 0 || isDeleting}
+              style={styles.exportChip}
+            >
+              Export
+            </Chip>
+          </View>
+        </Card.Content>
+      </Card>
+
+      {/* Search Bar */}
+      {journals.length > 0 && (
         <Searchbar
-          placeholder="Search journals..."
+          placeholder="Search in journals..."
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={styles.searchbar}
+          icon="magnify"
         />
       )}
 
-      {filteredJournals.length === 0 && !isLoading ? (
-        <View style={styles.emptyState}>
+      {/* Content */}
+      {filteredJournals.length === 0 && !isGlobalLoading ? (
+        <View style={styles.empty}>
           <Text variant="headlineSmall" style={styles.emptyTitle}>
-            {searchQuery ? "No results found" : "No journals yet"}
+            {searchQuery ? "No matches found" : "No journals yet"}
           </Text>
           <Text variant="bodyMedium" style={styles.emptyText}>
             {searchQuery
-              ? "Try a different search term"
-              : "Tap the + button to create your first entry"}
+              ? "Try different keywords"
+              : selectedDate
+              ? `No entries for ${selectedDateFormatted}`
+              : "Start your first journal entry"}
           </Text>
         </View>
       ) : (
         <FlatList
           data={filteredJournals}
-          renderItem={JournalList}
+          renderItem={({ item, index }) => (
+            <JournalCard key={item.id} item={item} index={index} />
+          )}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.list, { paddingBottom: 80 }]}
+          contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing || isGlobalLoading}
+              onRefresh={onRefresh}
+              tintColor={theme.colors.primary}
+            />
           }
+          showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* TODO: link to create journal for selectedDate  */}
+      {/* FAB */}
       <FAB
-        icon="pencil"
+        icon="plus"
+        label={selectedDate ? "New Entry" : "New Journal"}
         style={styles.fab}
-        label="New"
-
-        onPress={() =>{
-          if (selectedDate !== null && selectedDate !== "" )
-           navigation.navigate("JournalEditor", { selectedDate })
-          else  navigation.navigate("JournalEditor")
-          }}
+        onPress={() =>
+          navigation.navigate("JournalEditor", selectedDate ? { selectedDate } : {})
+        }
+        disabled={!encryptionKey}
       />
-
-      
     </SafeAreaView>
   );
 };
@@ -393,72 +369,89 @@ const styles = StyleSheet.create({
   headerCard: {
     margin: 16,
     marginBottom: 8,
+    borderWidth: 1,
+    borderRadius: 12,
   },
-  headerRow: {
+  headerContent: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "flex-start",
   },
-  headerTextContainer: {
+  headerText: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
   },
   headerTitle: {
-    fontWeight: "bold",
+    fontWeight: "700",
+    marginBottom: 4,
   },
-  entryCount: {
+  subtitle: {
     opacity: 0.7,
-    marginTop: 4,
+  },
+  exportChip: {
+    minHeight: 36,
   },
   searchbar: {
-    margin: 16,
+    marginHorizontal: 16,
     marginBottom: 8,
+    borderRadius: 12,
   },
   list: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
-  journalCard: {
+  card: {
     marginBottom: 12,
-    elevation: 2,
   },
   title: {
+    fontWeight: "600",
     marginBottom: 8,
-    fontWeight: "bold",
-  },
-  dateContainer: {
-    flexDirection: "row",
-    marginBottom: 12,
-    flexWrap: "wrap",
   },
   preview: {
-    opacity: 0.8,
+    marginBottom: 12,
   },
-  emptyState: {
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  meta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  metaChip: {
+    height: 28,
+    backgroundColor: "rgba(255,255,255,0.7)",
+  },
+  chipText: {
+    fontSize: 11,
+  },
+  editChip: {
+    height: 32,
+  },
+  empty: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
-  },
-  chip: {
-    marginBottom: 8,
-    backgroundColor: "#ffffff93",
+    padding: 48,
   },
   emptyTitle: {
     marginBottom: 8,
     textAlign: "center",
   },
   emptyText: {
-    opacity: 0.7,
+    opacity: 0.6,
     textAlign: "center",
+    lineHeight: 22,
   },
-  fab: {
+ fab: {
     position: "absolute",
     margin: 16,
     right: 20,
-    bottom: 50,
-  },
-  imageChip: {
-    marginLeft: 8,
+    bottom: 80, // ✅ Changed from 50 to avoid navigation bar
   },
 });
 

@@ -260,16 +260,18 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={["top", "bottom"]}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
+     <SafeAreaView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        edges={['bottom']} // ✅ Only protect bottom edge
       >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} // ✅ Add offset for header
+        >
+
         <ScrollView
-          contentContainerStyle={[styles.content]}
+          contentContainerStyle={[styles.content, { paddingBottom: 80 }]}
           keyboardShouldPersistTaps="handled"
         >
           {/* Editor/Preview Toggle */}
@@ -287,7 +289,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
               style={styles.saveButton}
               disabled={isSaving || !text.trim()}
             >
-              {isJournalCreated ? "Saved!" : "Type to save..."}
+              {isJournalCreated ? "" : "Type to save..."}
             </Chip>
           </View>
 
@@ -422,16 +424,17 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
+   container: {
     flex: 1,
   },
   content: {
     flexGrow: 1,
     padding: 10,
+    paddingBottom: 100, // ✅ Add extra bottom padding
     justifyContent: "flex-start",
+  },
+  keyboardView: {
+    flex: 1,
   },
   titleInput: {
     marginBottom: 12,
@@ -503,6 +506,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: 20,
+    marginBottom: 40, // ✅ Increase bottom margin
   },
   loadingText: {
     marginTop: 30,
