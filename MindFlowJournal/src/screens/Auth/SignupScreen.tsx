@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import {
   Button,
@@ -54,26 +54,33 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     hasSelectedQuestions &&
     allQuestionsAnswered;
 
-  const toggleQuestionSelection = (questionId: string) => {
+  const toggleQuestionSelection = useCallback((questionId: string) => {
     if (selectedQuestions.includes(questionId)) {
-      setSelectedQuestions(selectedQuestions.filter(q => q !== questionId));
-      const newAnswers = { ...answers };
-      delete newAnswers[questionId];
-      setAnswers(newAnswers);
+      setSelectedQuestions(prev => prev.filter(q => q !== questionId));
+      setAnswers(prev => {
+        const newAnswers = { ...prev };
+        delete newAnswers[questionId];
+        return newAnswers;
+      });
     } else if (selectedQuestions.length < 3) {
-      setSelectedQuestions([...selectedQuestions, questionId]);
+      setSelectedQuestions(prev => [...prev, questionId]);
     } else {
       Alert.alert('Maximum Reached', 'You can only select 3 questions');
     }
-  };
+  }, [selectedQuestions.length]);
 
-  const handleSignup = async () => {
-    if (!canSubmit) return;
+  // Force immediate UI update before heavy crypto work
+  const handleSignup = useCallback(async () => {
+    if (!canSubmit || isLoading) return;
 
+    // ✅ CRITICAL: Force immediate state update and yield to React render
     setIsLoading(true);
+    
+    // Yield control to let React paint the loading state FIRST
+    await new Promise(resolve => setImmediate(resolve));
 
     try {
-      // 1. Prepare QA pairs in the order they were selected
+      // Prepare QA pairs
       const qaPairs: QAPair[] = selectedQuestions.map(qId => ({
         questionId: qId,
         answer: answers[qId],
@@ -89,7 +96,6 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         qaPairs
       );
 
-      // 3. Save vault to persistent storage
       await saveVault(vault);
 
       // 4. Save recovery key hash (for verification purposes)
@@ -140,7 +146,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [canSubmit, isLoading, password, selectedQuestions, answers, dispatch]);
 
   const controlDisabled = isLoading;
 
@@ -168,6 +174,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <TextInput.Icon
               icon={showPassword ? 'eye-off' : 'eye'}
               onPress={() => setShowPassword(!showPassword)}
+              disabled={controlDisabled}
             />
           }
         />
@@ -189,6 +196,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <TextInput.Icon
               icon={showConfirmPassword ? 'eye-off' : 'eye'}
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              disabled={controlDisabled}
             />
           }
         />
@@ -216,6 +224,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               onPress={() => toggleQuestionSelection(q.id)}
               style={styles.questionChip}
               mode="outlined"
+              disabled={controlDisabled}
             >
               {q.question}
             </Chip>
@@ -233,9 +242,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               );
               return (
                 <View key={qId}>
-                  <Text variant="bodySmall" 
-                  
-                  style={styles.questionText}>
+                  <Text variant="bodySmall" style={styles.questionText}>
                     {question?.question}
                   </Text>
                   <TextInput
@@ -258,10 +265,11 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           mode="contained"
           onPress={handleSignup}
           style={styles.button}
-          disabled={controlDisabled}
+          disabled={!canSubmit || controlDisabled}
           loading={isLoading}
+          accessibilityState={{ busy: isLoading }}
         >
-          {isLoading ? "🔏 Creating a secure environment...":"🔒 Create Account"}
+          {isLoading ? '🔏 Creating secure environment...' : '🔒 Create Account'}
         </Button>
 
         <Button
