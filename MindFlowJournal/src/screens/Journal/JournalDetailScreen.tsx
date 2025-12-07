@@ -1,6 +1,6 @@
-import { getMarkdownStyles } from '@/src/utils/markdownStyles';
-import { format } from 'date-fns';
-import React, { useEffect, useState } from 'react';
+import { getMarkdownStyles } from "@/src/utils/markdownStyles";
+import { format } from "date-fns";
+import React, { useEffect, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -9,27 +9,25 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 import Markdown from "react-native-markdown-display"; // [web:2][web:10]
 import {
-  Button,
   Chip,
   Divider,
   IconButton,
   Text,
-  useTheme,
-} from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { base64ToDataUri } from '../../services/imageService';
-import { deleteJournal, getJournal } from '../../services/unifiedStorageService';
-import { useAppDispatch, useAppSelector } from '../../stores/hooks';
-import { deleteJournal as deleteJournalAction } from '../../stores/slices/journalsSlice';
-import { Journal } from '../../types';
-import { Alert } from '../../utils/alert';
+  useTheme
+} from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { base64ToDataUri } from "../../services/imageService";
+import {
+  getJournal
+} from "../../services/unifiedStorageService";
+import { useAppDispatch, useAppSelector } from "../../stores/hooks";
+import { Journal } from "../../types";
+import { Alert } from "../../utils/alert";
 
-
-const { width: screenWidth } = Dimensions.get('window');
-
+const { width: screenWidth } = Dimensions.get("window");
 
 const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -38,88 +36,78 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   const theme = useTheme();
   const dispatch = useAppDispatch();
   // const { encryptionKey } = useAuth();
-    const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
-
-
+  const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
 
   const { journalId } = route.params;
+  const { backColor } = route.params;
   const [journal, setJournal] = useState<Journal | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-
   useEffect(() => {
     loadJournal();
   }, [journalId]);
 
-
   const loadJournal = async () => {
     if (!encryptionKey) return;
-
 
     setIsLoading(true);
     try {
       const loadedJournal = await getJournal(journalId, encryptionKey);
-      console.log('Loaded journal:', {
+      console.log("Loaded journal:", {
         id: loadedJournal?.id,
         hasImages: !!loadedJournal?.images,
         imageCount: loadedJournal?.images?.length || 0,
-        firstImagePreview: loadedJournal?.images?.[0]?.substring(0, 50) || 'none',
+        firstImagePreview:
+          loadedJournal?.images?.[0]?.substring(0, 50) || "none",
       });
       setJournal(loadedJournal);
     } catch (error) {
-      console.error('Error loading journal:', error);
-      Alert.alert('Error', 'Failed to load journal entry');
+      console.error("Error loading journal:", error);
+      Alert.alert("Error", "Failed to load journal entry");
     } finally {
       setIsLoading(false);
     }
   };
 
-
-
   const handleDelete = () => {
     Alert.alert(
-      'Delete Journal Entry',
-      'Are you sure you want to delete this entry? This cannot be undone.',
+      "Delete Journal Entry",
+      "Are you sure you want to delete this entry? This cannot be undone.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           onPress: confirmDelete,
         },
-      ]
+      ],
     );
   };
-
 
   const confirmDelete = async () => {
     if (!encryptionKey) return;
 
-
     setIsDeleting(true);
     try {
-      await deleteJournal(journalId);
-      dispatch(deleteJournalAction(journalId));
-        navigation.goBack() ;
+      // await deleteJournal(journalId);
+      // dispatch(deleteJournalAction(journalId));
+      // navigation.goBack();
     } catch (error) {
-      console.error('Error deleting journal:', error);
-      Alert.alert('Error', 'Failed to delete journal entry');
+      console.error("Error deleting journal:", error);
+      Alert.alert("Error", "Failed to delete journal entry");
     } finally {
       setIsDeleting(false);
     }
   };
 
-
   // Define Markdown styles based on current theme
-
-
 
   if (isLoading) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        style={[styles.container, { backgroundColor: backColor??theme.colors.background }]}
       >
         <View style={styles.loadingContainer}>
           <Text>Loading...</Text>
@@ -128,17 +116,16 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
     );
   }
 
-
   if (!journal) {
     return (
       <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        style={[styles.container, { backgroundColor: backColor??theme.colors.background }]}
       >
         <View style={styles.loadingContainer}>
           <Text>Journal not found</Text>
-          <Button mode="outlined" onPress={() => navigation.goBack()}>
+          <Chip style={{marginTop:10}} mode="outlined" onPress={() => navigation.goBack()}>
             Go Back
-          </Button>
+          </Chip>
         </View>
       </SafeAreaView>
     );
@@ -147,22 +134,22 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   const markdownStyles = getMarkdownStyles(theme);
 
   const dateObj = new Date(journal.date);
-  const formattedDate = format(dateObj, 'EEEE, MMMM dd, yyyy');
-  const formattedTime = format(dateObj, 'hh:mm a');
-
+  const formattedDate = format(dateObj, "EEEE, MMMM dd, yyyy");
+  const formattedTime = format(dateObj, "hh:mm a");
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={['top', 'bottom']}
+      style={[styles.container, { backgroundColor: backColor??theme.colors.background }]}
+      edges={["top", "bottom"]}
     >
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 16 }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: 16 }]}
+      >
         {journal.title && (
           <Text variant="headlineMedium" style={styles.title}>
             {journal.title}
           </Text>
         )}
-
 
         <View style={styles.metaContainer}>
           <Chip icon="calendar" style={styles.chip}>
@@ -171,13 +158,30 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
           <Chip icon="clock-outline" style={styles.chip}>
             {formattedTime}
           </Chip>
+          <Chip
+            mode="flat"
+            onPress={handleDelete}
+            compact
+            style={{
+              ...styles.chip,
+            }}            
+            icon="delete"
+            disabled={isDeleting}
+          >{""}</Chip>
+            <Chip
+              mode="flat"
+              compact
+              onPress={() =>
+                navigation.navigate("JournalEditor", { journalId: journal.id })
+              }
+              style={{...styles.chip}}
+              icon="pencil"
+            >{""}</Chip>
         </View>
-
-
+   
         <Divider style={styles.divider} />
 
-
-       {/* Images Gallery */}
+        {/* Images Gallery */}
         {journal.images && journal.images.length > 0 && (
           <View style={styles.imagesContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -188,15 +192,21 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
                     key={`img-${journal.id}-${index}`}
                     onPress={() => setSelectedImage(imageUri)}
                   >
-                    <Image 
-                      source={{ uri: imageUri }} 
+                    <Image
+                      source={{ uri: imageUri }}
                       style={styles.thumbnail}
                       onError={(error) => {
-                        console.error('Image load error:', error.nativeEvent.error);
-                        console.log('Failed image URI preview:', imageUri.substring(0, 100));
+                        console.error(
+                          "Image load error:",
+                          error.nativeEvent.error,
+                        );
+                        console.log(
+                          "Failed image URI preview:",
+                          imageUri.substring(0, 100),
+                        );
                       }}
                       onLoad={() => {
-                        console.log('Image loaded successfully:', index);
+                        console.log("Image loaded successfully:", index);
                       }}
                     />
                   </TouchableOpacity>
@@ -206,51 +216,22 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
           </View>
         )}
 
-
         {/* Replaced Text with Markdown */}
         <View style={styles.textContainer}>
-            <Markdown style={markdownStyles}>
-                {journal.text}
-            </Markdown>
+          <Markdown style={markdownStyles}>{journal.text}</Markdown>
         </View>
-
 
         <View style={styles.footer}>
           <Text variant="bodySmall" style={styles.footerText}>
-            Created: {format(new Date(journal.createdAt), 'MMM dd, yyyy hh:mm a')}
+            Created:{" "}
+            {format(new Date(journal.createdAt), "MMM dd, yyyy hh:mm a")}
           </Text>
           <Text variant="bodySmall" style={styles.footerText}>
-            Updated: {format(new Date(journal.updatedAt), 'MMM dd, yyyy hh:mm a')}
+            Updated:{" "}
+            {format(new Date(journal.updatedAt), "MMM dd, yyyy hh:mm a")}
           </Text>
-        </View>
-
-
-        <View style={styles.actions}>
-          <Chip
-            mode="outlined"
-            onPress={handleDelete}
-            style={styles.actionButton}
-            // backgroundColor={theme.colors.errorContainer}
-            // textColor={theme.colors.error}
-            icon="delete"
-            disabled={isDeleting}
-            // loading={isDeleting}
-          >
-            Delete
-          </Chip>
-          <Chip
-            // mode="contained"
-            onPress={() =>
-              navigation.navigate('JournalEditor', { journalId: journal.id })
-            }
-            style={styles.actionButton}
-            icon="pencil"
-          >
-            Edit
-          </Chip>
-        </View>
+        </View>       
       </ScrollView>
-
 
       {/* Full Screen Image Modal */}
       <Modal
@@ -279,31 +260,31 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
     padding: 16,
   },
   title: {
     marginBottom: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   metaContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 16,
   },
   chip: {
     marginRight: 8,
     marginBottom: 8,
+    backgroundColor:"#ffffffb6"
   },
   divider: {
     marginVertical: 16,
@@ -328,8 +309,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     marginTop: 16,
   },
   actionButton: {
@@ -337,21 +318,20 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 40,
     right: 20,
     zIndex: 1,
   },
   fullImage: {
     width: screenWidth,
-    height: '100%',
+    height: "100%",
   },
 });
-
 
 export default JournalDetailScreen;

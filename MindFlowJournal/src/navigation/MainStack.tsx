@@ -2,7 +2,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
 import { Chip, useTheme } from "react-native-paper";
 import APP_CONFIG from "../config/appConfig";
-import CalendarScreen from "../screens/Calendar/CalendarScreen";
 import ExportScreen from "../screens/Export/ExportScreen";
 import HomeScreen from "../screens/Home/HomeScreen";
 import DateJournalListScreen from "../screens/Journal/DateJournalListScreen";
@@ -11,6 +10,7 @@ import JournalEditorScreen from "../screens/Journal/JournalEditorScreen";
 import JournalListScreen from "../screens/Journal/JournalListScreen";
 import SettingsScreen from "../screens/Settings/SettingsScreen";
 import { useAppDispatch } from "../stores/hooks";
+
 import { logout } from "../stores/slices/authSlice";
 
 const Stack = createNativeStackNavigator();
@@ -18,6 +18,17 @@ const Stack = createNativeStackNavigator();
 export const MainStack: React.FC = () => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
+
+  const commonHeaderOptions = {
+    headerStyle: { backgroundColor: theme.colors.surface },
+    headerTintColor: theme.colors.onSurface,
+    headerRight: () => (
+      <Chip mode="outlined" onPress={() => dispatch(logout())} icon="lock">
+        Lock
+      </Chip>
+    ),
+  };
+
   return (
     <Stack.Navigator
       initialRouteName="Home"
@@ -28,101 +39,38 @@ export const MainStack: React.FC = () => {
       <Stack.Screen
         name="Home"
         component={HomeScreen}
-        options={{
-          title: APP_CONFIG.displayName,
-          headerRight: () => (
-            <Chip
-              mode="outlined"
-              onPress={() => dispatch(logout())}
-              icon="lock"
-            >
-              Lock
-            </Chip>
-          ),
-        }}
+        options={{ ...commonHeaderOptions, title: APP_CONFIG.displayName }}
       />
       <Stack.Screen
         name="JournalList"
         component={JournalListScreen}
-        options={{ title: "My Journals" ,  headerRight: () => (
-            <Chip
-              mode="outlined"
-              onPress={() => dispatch(logout())}
-              icon="lock"
-            >
-              Lock
-            </Chip>
-          ),}}
+        options={{ ...commonHeaderOptions, title: "My Journals" }}
       />
       <Stack.Screen
         name="JournalEditor"
         component={JournalEditorScreen}
-        options={{ title: "Write Journal",  headerRight: () => (
-            <Chip
-              mode="outlined"
-              onPress={() => dispatch(logout())}
-              icon="lock"
-            >
-              Lock
-            </Chip>
-          ), }}
+        options={{ ...commonHeaderOptions, title: "Write Journal" }}
       />
       <Stack.Screen
         name="JournalDetail"
         component={JournalDetailScreen}
-        options={{ title: "Journal Entry",  headerRight: () => (
-            <Chip
-              mode="outlined"
-              onPress={() => dispatch(logout())}
-              icon="lock"
-            >
-              Lock
-            </Chip>
-          ), }}
+        options={{ ...commonHeaderOptions, title: "Journal Entry" }}
       />
       <Stack.Screen
         name="DateJournalList"
         component={DateJournalListScreen}
-        options={{ title: "Journals" ,  headerRight: () => (
-            <Chip
-              mode="outlined"
-              onPress={() => dispatch(logout())}
-              icon="lock"
-            >
-              Lock
-            </Chip>
-          ), }}
+        options={{ ...commonHeaderOptions, title: "Journals" }}
       />
-      <Stack.Screen
-        name="Calendar"
-        component={CalendarScreen}
-        options={{ title: "Calendar" }}
-      />
+
       <Stack.Screen
         name="Export"
         component={ExportScreen}
-        options={{ title: "Export Journals" , headerRight: () => (
-            <Chip
-              mode="outlined"
-              onPress={() => dispatch(logout())}
-              icon="lock"
-            >
-              Lock
-            </Chip>
-          ), }}
+        options={{ ...commonHeaderOptions, title: "Export Journals" }}
       />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: "Settings",  headerRight: () => (
-            <Chip
-              mode="outlined"
-              onPress={() => dispatch(logout())}
-              icon="lock"
-            >
-              Lock
-            </Chip>
-          ), }}
+        options={{ ...commonHeaderOptions, title: "Settings" }}
       />
     </Stack.Navigator>
   );

@@ -1,4 +1,5 @@
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
+import { getJournalCardStyle } from "@/src/utils/theme";
 import { useFocusEffect } from "@react-navigation/native";
 import { format, parseISO } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
@@ -6,7 +7,7 @@ import * as Sharing from "expo-sharing";
 import React, { useEffect, useState } from "react";
 import { Alert, FlatList, StyleSheet, View } from "react-native";
 import Markdown from "react-native-markdown-display";
-import { Button, Card, Chip, FAB, Text, useTheme } from "react-native-paper";
+import { Card, Chip, FAB, Text, useTheme } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   exportAsJSON,
@@ -51,27 +52,19 @@ const DateJournalListScreen: React.FC<{ navigation: any; route: any }> = ({
     const formattedTime = format(dateObj, "hh:mm a");
     const hasImages = item.images && item.images.length > 0;
 
-const previewText = item.text.length > 50 
-    ? item.text.substring(0, 50) + '...' 
-    : item.text;
+    const previewText =
+      item.text.length > 50 ? item.text.substring(0, 50) + "..." : item.text;
 
-    const getCardColor = (index: number) => {
-      // Alternate colors for visual variety
-      const colors = [
-        "#c5ffe4ff",
-        "#fff3ceff",
-        "#ffcff3ff",
-        "#d1e0ffff",
-        "#ffd3d3ff",
-      ];
-      return colors[index % colors.length];
-    };
+    const cardStyle = getJournalCardStyle(theme, index);
 
     return (
       <Card
-        style={[styles.journalCard, { backgroundColor: getCardColor(index) }]}
+        style={[styles.journalCard, cardStyle]}
         onPress={() =>
-          navigation.navigate("JournalDetail", { journalId: item.id })
+          navigation.navigate("JournalDetail", {
+            journalId: item.id,
+            backColor: cardStyle.backgroundColor,
+          })
         }
       >
         <Card.Content>
@@ -109,7 +102,7 @@ const previewText = item.text.length > 50
         <Text variant="bodyMedium" numberOfLines={3} style={styles.preview}>
           {item.text}
         </Text> */}
-          <View style={styles.preview}  >
+          <View style={styles.preview}>
             <Markdown style={{ ...markdownStyles }}>{previewText}</Markdown>
           </View>
         </Card.Content>
@@ -201,7 +194,13 @@ const previewText = item.text.length > 50
       edges={["top", "bottom"]}
     >
       {/* Header Section */}
-      <Card style={styles.headerCard}>
+      <Card
+        style={{
+          ...styles.headerCard,
+          borderColor: theme.colors.secondary,
+          borderWidth: 2,
+        }}
+      >
         <Card.Content>
           <View style={styles.headerRow}>
             <View style={styles.headerTextContainer}>
@@ -213,15 +212,14 @@ const previewText = item.text.length > 50
                 {journalsForDate.length === 1 ? "entry" : "entries"}
               </Text>
             </View>
-            <Button
-              mode="contained"
+            <Chip
+              mode="flat"
               icon="export"
               onPress={showExportOptions}
               disabled={isExporting || journalsForDate.length === 0}
-              compact
             >
               Export
-            </Button>
+            </Chip>
           </View>
         </Card.Content>
       </Card>

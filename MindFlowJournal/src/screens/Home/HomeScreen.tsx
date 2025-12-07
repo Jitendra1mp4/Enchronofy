@@ -1,3 +1,4 @@
+import { getCalendarTheme } from "@/src/utils/theme";
 import { useFocusEffect } from "@react-navigation/native";
 import { format, subDays } from "date-fns";
 import React, { useEffect, useState } from "react";
@@ -84,7 +85,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleDayPress = (day: DateData) => {
-    navigation.navigate("DateJournalList", { selectedDate: day.dateString });
+    // navigation.navigate("DateJournalList", { selectedDate: day.dateString });
+    navigation.navigate("JournalList", { selectedDate: day.dateString });
   };
 
   const handleCreateJournalForToday = () => {
@@ -195,27 +197,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               markingType="dot"
               markedDates={markedDates}
               onDayPress={handleDayPress}
-              theme={{
-                backgroundColor: theme.colors.surface,
-                calendarBackground: theme.colors.surface,
-                textSectionTitleColor: theme.colors.onSurface,
-                selectedDayBackgroundColor: theme.colors.primary,
-                selectedDayTextColor: theme.colors.onPrimary,
-                todayTextColor: theme.colors.primary,
-                dayTextColor: theme.colors.onSurface,
-                textDisabledColor: theme.colors.outline,
-                dotColor: theme.colors.primary,
-                selectedDotColor: theme.colors.onPrimary,
-                arrowColor: theme.colors.primary,
-                monthTextColor: theme.colors.onSurface,
-                indicatorColor: theme.colors.primary,
-                textDayFontWeight: "400",
-                textMonthFontWeight: "bold",
-                textDayHeaderFontWeight: "600",
-                textDayFontSize: 16,
-                textMonthFontSize: 18,
-                textDayHeaderFontSize: 14,
-              }}
+              theme={getCalendarTheme(theme)} 
             />
           </Card.Content>
         </Card>
@@ -240,7 +222,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 icon="pencil"
                 compact
               >
-                New Entry
+                New
               </Button>
             </View>
           </Card.Content>

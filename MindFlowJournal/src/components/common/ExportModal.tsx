@@ -1,11 +1,12 @@
 // ExportModal.tsx
+import { Journal } from '@/src/types';
 import { format, parseISO } from 'date-fns';
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface ExportModalProps {
   visible: boolean;
-  journalsForDate: any[]; // Replace with your journal type
+  journalsList: Journal[]; // Replace with your journal type
   selectedDate: string;
   onExport: (format: 'json' | 'pdf' | 'text') => void;
   onClose: () => void;
@@ -13,7 +14,7 @@ interface ExportModalProps {
 
 export const ExportModal: React.FC<ExportModalProps> = ({
   visible,
-  journalsForDate,
+  journalsList,
   selectedDate,
   onExport,
   onClose,
@@ -26,7 +27,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <View style={styles.modal}>
           <Text style={styles.title}>Export Journals</Text>
           <Text style={styles.message}>
-            {`Export ${journalsForDate.length} journal${journalsForDate.length === 1 ? '' : 's'} for ${format(parseISO(selectedDate), 'MMMM dd, yyyy')}?`}
+            {`Export ${journalsList.length} journal${journalsList.length === 1 ? '' : 's'} for ${format(parseISO(selectedDate), 'MMMM dd, yyyy')}?`}
           </Text>
           
           <Pressable 

@@ -259,7 +259,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                       text: "Yes",
                       onPress: () => {
                         ResetStorage();
-                        navigation.goBack();
+                       navigation.navigate('Signup')
                       },
                     },
                   ],
