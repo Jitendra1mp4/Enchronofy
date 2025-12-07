@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import CryptoManager from '../../services/cryptoManager';
 import {
   clearRecoveryKeyDisplay,
+  isFirstLaunch,
   markAsLaunched,
   saveRecoveryKeyHash,
   saveVault,
@@ -30,7 +31,6 @@ import { PREDEFINED_SECURITY_QUESTIONS } from '../../utils/securityQuestions';
 const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
-  // const { setEncryptionKey } = useAuth();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -40,6 +40,27 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Fix useEffect: proper async handling + runs once only
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const isFirst = await isFirstLaunch();
+        console.log(`isFirstLaunch: ${isFirst}`);
+        if (!isFirst && isMounted) {
+          navigation.navigate('Login');
+        }
+      } catch (err) {
+        console.error('Error checking first launch:', err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigation]);
 
   const passwordsMatch = password === confirmPassword && password.length > 0;
   const isPasswordValid = password.length >= 8;
