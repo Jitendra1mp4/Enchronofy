@@ -190,6 +190,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
     try {
       const now = new Date().toISOString();
+
       let existingJournal: Journal | null = null;
 
       if (generatedJournalId) {
@@ -197,6 +198,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       }
 
       let journalDate = now;
+
       if (existingJournal?.date) {
         journalDate = existingJournal.date;
       } else if (selectedDate) {
@@ -260,16 +262,15 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   }
 
   return (
-     <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-        edges={['bottom']} // ✅ Only protect bottom edge
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={["bottom"]} // ✅ Only protect bottom edge
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0} // ✅ Add offset for header
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.keyboardView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} // ✅ Add offset for header
-        >
-
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: 80 }]}
           keyboardShouldPersistTaps="handled"
@@ -311,7 +312,8 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
               ]}
             >
               <Markdown style={markdownStyles}>
-                {text || "*Nothing to preview*\n ### Quick Guid\n- start line with # [space] for heading heading.\n- Start line with ## [space] for sub heading and so on.\n - Start line with - [space] for bullet\n- Surround text with * to make it italic\n- Surround text with ** to make it bold."}
+                {text ||
+                  "*Nothing to preview*\n ### Quick Guid\n- start line with # [space] for heading heading.\n- Start line with ## [space] for sub heading and so on.\n - Start line with - [space] for bullet\n- Surround text with * to make it italic\n- Surround text with ** to make it bold."}
               </Markdown>
             </View>
           ) : (
@@ -424,7 +426,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 };
 
 const styles = StyleSheet.create({
-   container: {
+  container: {
     flex: 1,
   },
   content: {

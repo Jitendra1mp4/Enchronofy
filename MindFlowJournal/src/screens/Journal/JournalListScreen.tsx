@@ -2,7 +2,7 @@ import { ExportModal } from "@/src/components/common/ExportModal";
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
 import { getJournalCardStyle } from "@/src/utils/theme";
 import { useFocusEffect } from "@react-navigation/native";
-import { format, parseISO } from "date-fns";
+import { format, isFuture, parseISO } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useMemo, useState } from "react";
@@ -175,6 +175,24 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       ]
     );
   };
+
+   const handleFabPress = () => {
+    if (selectedDate) {
+      const dateObj = parseISO(selectedDate);
+      if (isFuture(dateObj)) {
+        Alert.alert(
+          "Future Date Selected",
+          "Cannot create journals for future dates yet.\n\n✨ Upcoming Feature: Todo notes and Reminders for future dates!",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+      navigation.navigate("JournalEditor", { selectedDate });
+    } else {
+      navigation.navigate("JournalEditor");
+    }
+  };
+
 
   const selectedDateFormatted = selectedDate
     ? format(parseISO(selectedDate), "EEEE, MMMM do, yyyy")
@@ -349,13 +367,11 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       )}
 
       {/* FAB */}
-      <FAB
+     <FAB
         icon="plus"
         label={selectedDate ? "New Entry" : "New Journal"}
         style={styles.fab}
-        onPress={() =>
-          navigation.navigate("JournalEditor", selectedDate ? { selectedDate } : {})
-        }
+        onPress={handleFabPress} // Use the new handler
         disabled={!encryptionKey}
       />
     </SafeAreaView>
