@@ -7,6 +7,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -311,10 +312,12 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
                 { borderColor: theme.colors.outline },
               ]}
             >
-              <Markdown style={markdownStyles}>
-                {text ||
-                  "*Nothing to preview*\n ### Quick Guid\n- start line with # [space] for heading heading.\n- Start line with ## [space] for sub heading and so on.\n - Start line with - [space] for bullet\n- Surround text with * to make it italic\n- Surround text with ** to make it bold."}
-              </Markdown>
+              <Pressable onPress={() => setIsPreviewMode(!isPreviewMode)}>
+                <Markdown style={markdownStyles}>
+                  {text ||
+                    "*Nothing to preview*\n ### Quick Guid\n- start line with # [space] for heading heading.\n- Start line with ## [space] for sub heading and so on.\n - Start line with - [space] for bullet\n- Surround text with * to make it italic\n- Surround text with ** to make it bold."}
+                </Markdown>
+              </Pressable>
             </View>
           ) : (
             <TextInput
