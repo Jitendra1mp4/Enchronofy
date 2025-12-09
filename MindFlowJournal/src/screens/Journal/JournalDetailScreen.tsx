@@ -1,6 +1,7 @@
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
+import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Dimensions,
   Image,
@@ -45,10 +46,11 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    loadJournal();
-  }, [journalId]);
-
+  useFocusEffect(
+    React.useCallback(() => {
+      loadJournal();
+    }, [journalId, encryptionKey])
+  )
   const loadJournal = async () => {
     if (!encryptionKey) return;
 
