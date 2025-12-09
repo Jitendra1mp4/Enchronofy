@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
-import { Chip, useTheme } from "react-native-paper";
+import { IconButton, useTheme } from "react-native-paper";
 import APP_CONFIG from "../config/appConfig";
 import ExportScreen from "../screens/Export/ExportScreen";
 import HomeScreen from "../screens/Home/HomeScreen";
@@ -19,11 +19,13 @@ export const MainStack: React.FC = () => {
 
   const commonHeaderOptions = {
     headerStyle: { backgroundColor: theme.colors.surface },
-    headerTintColor: theme.colors.onSurface,
+    headerTintColor: theme.colors.onSurface,   
     headerRight: () => (
-      <Chip mode="outlined" onPress={() => dispatch(logout())} icon="lock">
-        Lock
-      </Chip>
+       <IconButton
+        icon="lock-outline"
+        onPress={() => dispatch(logout())}
+        iconColor={theme.colors.primary}
+      />
     ),
   };
 
