@@ -7,19 +7,26 @@ import { format, isFuture, parseISO } from "date-fns";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import React, { useCallback, useMemo, useState } from "react";
-import { Alert, FlatList, RefreshControl, StyleSheet, View } from "react-native";
+import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import Markdown from "react-native-markdown-display";
-import { Card, Chip, FAB, Searchbar, Text, useTheme } from "react-native-paper";
+import { Card, FAB, IconButton, Searchbar, Text, useTheme } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   exportAsJSON,
   exportAsMarkdown,
   exportAsPDF,
-} from "../../services/exportService";
-import { deleteJournal, listJournals } from "../../services/unifiedStorageService";
-import { useAppDispatch, useAppSelector } from "../../stores/hooks";
-import { deleteJournal as deleteJournalAction, setJournals, setLoading } from "../../stores/slices/journalsSlice";
-import { Journal } from "../../types";
+} from '../../services/exportService';
+import {
+  deleteJournal,
+  listJournals
+} from '../../services/unifiedStorageService';
+import { useAppDispatch, useAppSelector } from '../../stores/hooks';
+import {
+  deleteJournal as deleteJournalAction, setJournals,
+  setLoading
+} from '../../stores/slices/journalsSlice';
+import { Journal } from '../../types';
+import { Alert } from '../../utils/alert';
 
 const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -31,21 +38,17 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   const journals = useAppSelector((state) => state.journals.journals);
   const isGlobalLoading = useAppSelector((state) => state.journals.isLoading);
 
-  // Route params
   const { selectedDate } = route.params || {};
 
-  // Local state
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // SAFE FILTERING - Read-only derived state
   const filteredJournals = useMemo(() => {
     let result = [...journals];
 
-    // Filter by selected date (if provided)
     if (selectedDate) {
       result = result.filter((journal) => {
         const journalDate = new Date(journal.date);
@@ -56,7 +59,6 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       });
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(
@@ -66,15 +68,14 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       );
     }
 
-    // Sort newest first
     return result.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
   }, [journals, selectedDate, searchQuery]);
 
-  // Load journals from storage
   const loadJournals = useCallback(async () => {
     if (!encryptionKey) return;
+
     dispatch(setLoading(true));
     try {
       const loadedJournals = await listJournals(encryptionKey);
@@ -138,7 +139,10 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       }
 
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { mimeType, dialogTitle: "Share Journals" });
+        await Sharing.shareAsync(fileUri, {
+          mimeType,
+          dialogTitle: 'Share Journals',
+        });
       } else {
         Alert.alert("Export Complete", `File saved:\n${fileUri}`);
       }
@@ -182,108 +186,121 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
     );
   };
 
-   const handleFabPress = () => {
+  const handleFabPress = () => {
     if (selectedDate) {
       const dateObj = parseISO(selectedDate);
       if (isFuture(dateObj)) {
         Alert.alert(
-          "Future Date Selected",
-          "Cannot create journals for future dates yet.\n\n✨ Upcoming Feature: Todo notes and Reminders for future dates!",
-          [{ text: "OK" }]
+          'Future Date Selected',
+          'Cannot create journals for future dates yet.\n\nUpcoming Feature: Todo notes and Reminders for future dates!',
+          [{ text: 'OK' }]
         );
         return;
       }
-      navigation.navigate("JournalEditor", { selectedDate });
+      navigation.navigate('JournalEditor', { selectedDate });
     } else {
-      navigation.navigate("JournalEditor");
+      navigation.navigate('JournalEditor');
     }
   };
 
-
   const selectedDateFormatted = selectedDate
-    ? format(parseISO(selectedDate), "EEEE, MMMM do, yyyy")
+    ? format(parseISO(selectedDate), 'EEEE, MMMM do, yyyy')
     : null;
 
-  // Journal Card Component
+  // ✅ IMPROVED Journal Card Component
   const JournalCard = ({ item, index }: { item: Journal; index: number }) => {
     const dateObj = new Date(item.date);
-    const formattedDate = format(dateObj, "MMM dd, yyyy");
-    const formattedTime = format(dateObj, "hh:mm a");
+    const formattedDate = format(dateObj, 'MMM dd, yyyy');
+    const formattedTime = format(dateObj, 'h:mm a');
     const hasImages = item.images && item.images.length > 0;
     const cardStyle = getJournalCardStyle(theme, index);
     const markdownStyles = getMarkdownStyles(theme);
 
-    const previewText = item.text.length > 100
-      ? item.text.substring(0, 100).replace(/\n/g, " ") + "..."
-      : item.text;
+    const previewText =
+      item.text.length > 100
+        ? item.text.substring(0, 100).replace(/\n/g, ' ') + '...'
+        : item.text;
 
     return (
       <Card
         style={[styles.card, cardStyle]}
         onPress={() =>
-          navigation.navigate("JournalDetail", {
+          navigation.navigate('JournalDetail', {
             journalId: item.id,
             backColor: cardStyle.backgroundColor as string,
           })
         }
       >
-        <Card.Content>
+        <Card.Content style={styles.cardContent}>
           {item.title && (
-            <Text variant="titleMedium" style={styles.title}>
+            <Text variant="titleMedium" style={styles.cardTitle} numberOfLines={2}>
               {item.title}
             </Text>
           )}
+
           <View style={styles.preview}>
             <Markdown
               style={{
                 ...markdownStyles,
-                body: { fontSize: 14, lineHeight: 20 },
+                body: { fontSize: 14, lineHeight: 20, color: theme.colors.onSurfaceVariant },
               }}
             >
               {previewText}
             </Markdown>
           </View>
-          <View style={styles.footer}>
-            <View style={styles.meta}>
-              <Chip
-                icon="calendar"
-                style={styles.metaChip}
-                textStyle={styles.chipText}
-                compact
-              >
-                {formattedDate}
-              </Chip>
-              <Chip
-                icon="clock-outline"
-                style={styles.metaChip}
-                textStyle={styles.chipText}
-                compact
-              >
-                {formattedTime}
-              </Chip>
+
+          <View style={styles.cardFooter}>
+            <View style={styles.metaInfo}>
+              <View style={styles.metaRow}>
+                <IconButton
+                  icon="calendar-outline"
+                  size={14}
+                  iconColor={theme.colors.onSurfaceVariant}
+                  style={styles.metaIcon}
+                />
+                <Text variant="bodySmall" style={styles.metaText}>
+                  {formattedDate}
+                </Text>
+              </View>
+              
+              <View style={styles.metaRow}>
+                <IconButton
+                  icon="clock-outline"
+                  size={14}
+                  iconColor={theme.colors.onSurfaceVariant}
+                  style={styles.metaIcon}
+                />
+                <Text variant="bodySmall" style={styles.metaText}>
+                  {formattedTime}
+                </Text>
+              </View>
+
               {hasImages && (
-                <Chip
-                  icon="image"
-                  style={styles.metaChip}
-                  textStyle={styles.chipText}
-                  compact
-                >
-                  {item.images!.length}
-                </Chip>
+                <View style={styles.metaRow}>
+                  <IconButton
+                    icon="image-outline"
+                    size={14}
+                    iconColor={theme.colors.onSurfaceVariant}
+                    style={styles.metaIcon}
+                  />
+                  <Text variant="bodySmall" style={styles.metaText}>
+                    {item.images!.length}
+                  </Text>
+                </View>
               )}
             </View>
-            <Chip
-              icon="pencil"
+
+            <IconButton
+              icon="pencil-outline"
+              size={20}
+              mode="contained-tonal"
+              iconColor={theme.colors.primary}
+              style={styles.editButton}
               onPress={(e) => {
                 e.stopPropagation();
-                navigation.navigate("JournalEditor", { journalId: item.id });
+                navigation.navigate('JournalEditor', { journalId: item.id });
               }}
-              style={styles.editChip}
-              compact
-              mode="outlined"
-            >
-              Edit
-            </Chip>
+            />
           </View>
         </Card.Content>
       </Card>
@@ -294,35 +311,31 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      {/* Export Modal */}
       <ExportModal
         visible={showExportModal}
         journalsList={filteredJournals}
-        selectedDate={selectedDate || format(new Date(), "yyyy-MM-dd")}
+        selectedDate={selectedDate || format(new Date(), 'yyyy-MM-dd')}
         onExport={handleExport}
         onClose={() => setShowExportModal(false)}
       />
 
-      {/* Header */}
-      <Card style={[styles.headerCard, { borderColor: theme.colors.outline }]}>
+      <Card style={[styles.headerCard, { borderColor: theme.colors.outlineVariant }]}>
         <Card.Content>
           <View style={styles.headerContent}>
             <View style={styles.headerText}>
               <Text variant="headlineSmall" style={styles.headerTitle}>
-                {selectedDateFormatted || "All My Journals"}
+                {selectedDateFormatted || 'All My Journals'}
               </Text>
               <Text variant="bodyMedium" style={styles.subtitle}>
-                {filteredJournals.length} entr{filteredJournals.length === 1 ? "y" : "ies"}
+                {filteredJournals.length} {filteredJournals.length === 1 ? 'entry' : 'entries'}
               </Text>
             </View>
-            <Chip
+            <IconButton
               icon="export-variant"
-              mode="outlined"
+              mode="contained-tonal"
               onPress={() => setShowExportModal(true)}
-              disabled={filteredJournals.length === 0 || isDeleting||isExporting}
-              style={styles.exportChip}
-            >Export
-            </Chip>
+              disabled={filteredJournals.length === 0 || isDeleting || isExporting}
+            />
           </View>
         </Card.Content>
       </Card>
@@ -342,21 +355,21 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       {filteredJournals.length === 0 && !isGlobalLoading ? (
         <View style={styles.empty}>
           <Text variant="headlineSmall" style={styles.emptyTitle}>
-            {searchQuery ? "No matches found" : "No journals yet"}
+            {searchQuery ? 'No matches found' : 'No journals yet'}
           </Text>
           <Text variant="bodyMedium" style={styles.emptyText}>
             {searchQuery
-              ? "Try different keywords"
+              ? 'Try different keywords'
               : selectedDate
               ? `No entries for ${selectedDateFormatted}`
-              : "Start your first journal entry"}
+              : 'Start your first journal entry'}
           </Text>
         </View>
       ) : (
         <FlatList
           data={filteredJournals}
           renderItem={({ item, index }) => (
-            <JournalCard key={item.id} item={item} index={index} />
+            <JournalCard item={item} index={index} />
           )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
@@ -371,12 +384,11 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
         />
       )}
 
-      {/* FAB */}
-     <FAB
+      <FAB
         icon="plus"
-        label={selectedDate ? "New Entry" : "New Journal"}
+        label={selectedDate ? 'New Entry' : 'New Journal'}
         style={styles.fab}
-        onPress={handleFabPress} // Use the new handler
+        onPress={handleFabPress}
         disabled={!encryptionKey}
       />
     </SafeAreaView>
@@ -394,16 +406,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerText: {
     flex: 1,
     marginRight: 12,
   },
   headerTitle: {
-    fontWeight: "700",
+    fontWeight: '700',
     marginBottom: 4,
   },
   subtitle: {
@@ -423,56 +435,71 @@ const styles = StyleSheet.create({
   },
   card: {
     marginBottom: 12,
+    borderRadius: 16,
+    elevation: 2,
   },
-  title: {
-    fontWeight: "600",
+  cardContent: {
+    paddingVertical: 16,
+  },
+  cardTitle: {
+    fontWeight: '600',
     marginBottom: 8,
   },
   preview: {
     marginBottom: 12,
   },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
-  meta: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
+  metaInfo: {
+    flexDirection: 'row',
+    flex: 1,
+    gap: 12,
+    flexWrap: 'wrap',
   },
-  metaChip: {
-    height: 28,
-    backgroundColor: "rgba(255,255,255,0.7)",
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
-  chipText: {
-    fontSize: 11,
+  metaIcon: {
+    margin: 0,
+    padding: 0,
+    height: 16,
+    width: 16,
   },
-  editChip: {
-    height: 32,
+  metaText: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  editButton: {
+    margin: 0,
   },
   empty: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 48,
   },
   emptyTitle: {
     marginBottom: 8,
-    textAlign: "center",
+    textAlign: 'center',
   },
   emptyText: {
     opacity: 0.6,
-    textAlign: "center",
+    textAlign: 'center',
     lineHeight: 22,
   },
- fab: {
-    position: "absolute",
+  fab: {
+    position: 'absolute',
     margin: 16,
     right: 20,
-    bottom: 80, // ✅ Changed from 50 to avoid navigation bar
+    bottom: 80,
   },
 });
 
