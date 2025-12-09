@@ -1,15 +1,27 @@
 // src/stores/slices/settingsSlice.ts
+import APP_CONFIG from '@/src/config/appConfig';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AppSettings } from '../../types';
 
+
+export interface SettingsState {
+  theme: 'light' | 'dark' | 'auto';
+  notificationsEnabled: boolean;
+  notificationTime: string;
+  autoLockTimeout: number;
+  instantLockOnBackground: boolean;
+  isExportInProgress: boolean;
+}
+
+
 // src/stores/slices/settingsSlice.ts
-const initialState: AppSettings = {
-  theme: 'auto',
+const initialState: SettingsState = {
+  theme: 'dark',
   notificationsEnabled: false,
   notificationTime: '20:00',
-  autoLockTimeout: 1 * 60 * 1000,
+  autoLockTimeout: APP_CONFIG.LOCK_TIMEOUT_OPTIONS[0].value, // 1 minutes
   instantLockOnBackground: false,
-  isExportInProgress: false, // ✅ NEW
+  isExportInProgress: false,
 };
 
 const settingsSlice = createSlice({
@@ -39,6 +51,9 @@ const settingsSlice = createSlice({
      setIsExportInProgress(state, action: PayloadAction<boolean>) {
       state.isExportInProgress = action.payload;
     },
+
+     resetSettings: () => initialState,
+    
   },
 });
 
@@ -50,6 +65,7 @@ export const {
   setInstantLockOnBackground,
   updateSettings,
   setIsExportInProgress, // ✅ NEW
+  resetSettings
 } = settingsSlice.actions;
 
 export default settingsSlice.reducer;

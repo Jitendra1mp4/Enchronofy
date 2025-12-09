@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
 import { ThemeProvider } from './src/components/common/ThemeProvider';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { getSettings } from './src/services/unifiedStorageService';
 import { store } from './src/stores';
 import {
   useAppDispatch,
@@ -16,7 +17,7 @@ import {
 import {
   logout
 } from './src/stores/slices/authSlice';
-import { setIsExportInProgress } from './src/stores/slices/settingsSlice';
+import { setIsExportInProgress, updateSettings } from './src/stores/slices/settingsSlice';
 
 function AppContent() {
   const appState = useRef(AppState.currentState);
@@ -35,6 +36,16 @@ function AppContent() {
         const { initializeStorage } = await import('./src/services/unifiedStorageService');
         await initializeStorage();
         console.log('✅ Storage initialized - App ready');
+        
+        // Load preferences from separate storage
+        const savedSettings = await getSettings();
+        if (savedSettings) {
+          console.log('✅ Loaded preferences:', savedSettings);
+          dispatch(updateSettings(savedSettings));
+        } else {
+          console.log('ℹ️ No saved preferences, using defaults');
+        }
+        
         setStorageReady(true);
       } catch (error) {
         console.error('❌ Storage init failed:', error);

@@ -331,7 +331,7 @@ export const clearAllData = async (): Promise<void> => {
  * 
  * @param vault - Vault object to store
  */
-export const saveVault = async (vault: Vault): Promise<void> => {
+export const saveVault = async (vault: Vault | Record<string, any>): Promise<void> => {
   try {
     // Vault is stored as-is (it's already structured with encrypted key wraps)
     await AsyncStorage.setItem(KEYS.VAULT, JSON.stringify(vault));
