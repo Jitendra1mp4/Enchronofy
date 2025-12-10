@@ -219,17 +219,16 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Calendar View */}
         <Card style={styles.card}>
           <Card.Content>
-           // Update the Calendar component
-          <Calendar
-            markingType="dot"
-            markedDates={markedDates}
-            onDayPress={handleDayPress}
-            theme={getCalendarTheme(theme)}
-            // ✅ Disable future dates visually
-            // maxDate={format(new Date(), "yyyy-MM-dd")} // Prevent selecting dates after today
-            disabledByDefault={false}
-          />
-
+            {/* // Update the Calendar component */}
+            <Calendar
+              markingType="dot"
+              markedDates={markedDates}
+              onDayPress={handleDayPress}
+              theme={getCalendarTheme(theme)}
+              // ✅ Disable future dates visually
+              // maxDate={format(new Date(), "yyyy-MM-dd")} // Prevent selecting dates after today
+              disabledByDefault={false}
+            />
           </Card.Content>
         </Card>
 
