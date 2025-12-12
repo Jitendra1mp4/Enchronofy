@@ -1,5 +1,5 @@
-import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import React from 'react';
 import { useAppSelector } from '../stores/hooks';
 import { AuthStack } from './AuthStack';
 import { MainStack } from './MainStack';
@@ -9,7 +9,7 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainStack /> : <AuthStack />}
+      {isAuthenticated ? <MainStack navigation={""}/> : <AuthStack />}
     </NavigationContainer>
   );
 };

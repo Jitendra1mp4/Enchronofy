@@ -1,7 +1,9 @@
+// src/screens/Home/HomeScreen.tsx
 import { Alert } from "@/src/utils/alert";
 import { getCalendarTheme } from "@/src/utils/theme";
-import { format, isFuture, startOfDay, subDays } from "date-fns";
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { format, subDays } from "date-fns";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Animated,
   Pressable,
@@ -10,7 +12,14 @@ import {
   View,
 } from "react-native";
 import { Calendar, DateData } from "react-native-calendars";
-import { Button, Card, Chip, Text, useTheme } from "react-native-paper";
+import {
+  Button,
+  Card,
+  Chip,
+  IconButton,
+  Text,
+  useTheme,
+} from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   calculateLongestStreak,
@@ -34,37 +43,30 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const journals = useAppSelector((state) => state.journals.journals);
 
   const [markedDates, setMarkedDates] = useState<any>({});
-  
-  // Animation value for streak number
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
-  // Initial load
   useEffect(() => {
     loadJournals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encryptionKey]);
 
-  // Refresh marked dates whenever journals change
+  useFocusEffect(
+    React.useCallback(() => {
+      updateMarkedDates();
+    }, [journals]),
+  );
+
   useEffect(() => {
     updateMarkedDates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journals]);
 
-  // Animate streak when it changes
   useEffect(() => {
-    if (currentStreak > 0) {
-      Animated.sequence([
-        Animated.spring(scaleAnim, {
-          toValue: 1.2,
-          useNativeDriver: true,
-          friction: 3,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          friction: 3,
-        }),
-      ]).start();
-    }
-  }, [currentStreak]);
+    Animated.sequence([
+      Animated.spring(scaleAnim, { toValue: 1.12, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }),
+    ]).start();
+  }, [currentStreak, scaleAnim]);
 
   const loadJournals = async () => {
     if (!encryptionKey) return;
@@ -73,7 +75,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       const loadedJournals = await listJournals(encryptionKey);
       dispatch(setJournals(loadedJournals));
 
-      // Calculate and store longest streak
       const longest = calculateLongestStreak(loadedJournals);
       dispatch(setLongestStreak(longest));
     } catch (error) {
@@ -87,18 +88,20 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const handleDayPress = (day: DateData) => {
-    // robust date comparison using date-fns
+    // ✅ VALIDATION: Prevent selecting future dates
     const selectedDate = new Date(day.dateString);
-    // Normalize to start of day to avoid time issues
-    const normalizedSelected = startOfDay(selectedDate);
-    const normalizedToday = startOfDay(new Date());
+    selectedDate.setHours(0, 0, 0, 0);
 
-    if (isFuture(normalizedSelected)) {
-       Alert.alert(
-        "Future Date 📅",
-        "You can't write journals for the future yet.\n\n" +
-          "🚀 Coming Soon: Todo & Reminders!",
-        [{ text: "OK" }]
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate > today) {
+      Alert.alert(
+        "Future Date Not Available 📅",
+        "Journals can only be created for today or past dates.\n\n" +
+          "🚀 Coming Soon:\n" +
+          "'Todo & Reminders' feature will allow you to plan ahead!\n\n" +
+          "For now, select today or a past date to view or create entries. ✨",
       );
       return;
     }
@@ -111,30 +114,34 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     navigation.navigate("JournalEditor", { selectedDate: today });
   };
 
-  // Get last 3 days of entries for the "Recent Activity" cards
-  const getLast3DaysJournals = () => {
-    const last3Days = [];
+  const calendarTheme = React.useMemo(
+    () => getCalendarTheme(theme),
+    [theme.dark, theme.colors],
+  );
+
+  const last3Days = useMemo(() => {
+    const days = [];
     for (let i = 0; i < 3; i++) {
       const date = subDays(new Date(), i);
       const dateStr = format(date, "yyyy-MM-dd");
       const count = journals.filter(
         (j) => format(new Date(j.date), "yyyy-MM-dd") === dateStr,
       ).length;
-      
-      last3Days.push({
+
+      days.push({
         dateKey: dateStr,
         dateLabel: format(date, "MMM dd"),
         count,
         isToday: i === 0,
       });
     }
-    // Reverse to show oldest (2 days ago) on left, Today on right? 
-    // Usually "Today" first (left) is better for LTR languages, or logic in map.
-    // Let's keep the order [Today, Yesterday, 2 Days Ago]
-    return last3Days;
-  };
+    return days;
+  }, [journals]);
 
-  const last3DaysData = getLast3DaysJournals();
+  const hasEntries = journals.length > 0;
+
+  const heroBg = theme.dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const subtleBorder = theme.colors.outlineVariant;
 
   return (
     <SafeAreaView
@@ -142,251 +149,353 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       edges={["bottom"]}
     >
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: 80 }]}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: 96 }]}
       >
-        {/* 1. Streak and Total Count Row */}
-        <Card style={styles.card} mode="elevated">
+        {/* HERO / OVERVIEW */}
+        <Card style={[styles.heroCard, { borderColor: subtleBorder }]}>
           <Card.Content>
-            {journals.length > 0 ? (
-              <View style={styles.statsRow}>
-                {/* Streak */}
-                <View style={styles.statItem}>
-                  <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                    <Text variant="displaySmall" style={[styles.statNumber, {color: theme.colors.primary}]}>
-                      {currentStreak}
-                    </Text>
-                  </Animated.View>
-                  <Text variant="bodyMedium" style={{color: theme.colors.onSurfaceVariant}}>
-                    🔥 Day Streak
-                  </Text>
-                </View>
-
-                {/* Vertical Divider */}
-                <View style={[styles.vertDivider, {backgroundColor: theme.colors.outlineVariant}]} />
-
-                {/* Total Entries */}
-                <Pressable
-                  style={styles.statItem}
-                  onPress={() => navigation.navigate("JournalList")}
-                >
-                  <Text variant="displaySmall" style={[styles.statNumber, {color: theme.colors.secondary}]}>
-                    {journals.length}
-                  </Text>
-                  <Text variant="bodyMedium" style={{color: theme.colors.onSurfaceVariant}}>
-                    📝 Total Memories
-                  </Text>
-                </Pressable>
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroText}>
+                <Text variant="titleLarge" style={styles.heroTitle}>
+                  {hasEntries ? "Welcome back" : "Start journaling"}
+                </Text>
+                <Text variant="bodyMedium" style={styles.heroSubtitle}>
+                  {hasEntries
+                    ? "Your progress is building day by day."
+                    : "Create your first entry and begin your streak."}
+                </Text>
               </View>
-            ) : (
-              // Empty State
-              <Pressable onPress={() => navigation.navigate("JournalEditor")}>
-                <View style={styles.emptyStatItem}>
-                   <Text variant="titleMedium" style={{textAlign:'center', marginBottom:8}}>
-                    Welcome to your Journal!
-                   </Text>
-                   <Button mode="contained-tonal" icon="pencil-plus">
-                    Write Your First Entry
-                   </Button>
-                </View>
+
+              <IconButton
+                icon="pencil-outline"
+                mode="contained-tonal"
+                onPress={handleCreateJournalForToday}
+                disabled={!encryptionKey}
+              />
+            </View>
+
+            <View style={styles.statGrid}>
+              <Pressable
+                style={[
+                  styles.statTile,
+                  { backgroundColor: heroBg, borderColor: subtleBorder },
+                ]}
+                onPress={() => navigation.navigate("JournalList")}
+              >
+                <Text variant="labelMedium" style={styles.statLabel}>
+                  Total entries
+                </Text>
+                <Text variant="displaySmall" style={styles.statValue}>
+                  {journals.length}
+                </Text>
               </Pressable>
-            )}
+
+              <View
+                style={[
+                  styles.statTile,
+                  { backgroundColor: heroBg, borderColor: subtleBorder },
+                ]}
+              >
+                <Text variant="labelMedium" style={styles.statLabel}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <IconButton icon="fire" size={18} style={{ margin: 0 }} />
+                    <Text variant="bodyMedium">Current Streak</Text>
+                  </View>
+                </Text>
+                <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                  <Text variant="displaySmall" style={styles.statValue}>
+                    {currentStreak}
+                  </Text>
+                </Animated.View>
+              </View>
+            </View>
+
+            <View style={styles.heroChipsRow}>
+              <Chip
+                icon="trophy"
+                compact
+                style={[
+                  styles.heroChip,
+                  { backgroundColor: theme.colors.elevation.level1 },
+                ]}
+              >
+                {`Longest streak: ${longestStreak}`}
+              </Chip>
+
+              <Chip
+                icon="calendar-check-outline"
+                compact
+                style={[
+                  styles.heroChip,
+                  { backgroundColor: theme.colors.elevation.level1 },
+                ]}
+                onPress={() => navigation.navigate("JournalList")}
+              >
+                View journals
+              </Chip>
+            </View>
           </Card.Content>
         </Card>
 
-        {/* 2. Recent Activity Bubbles */}
-        {journals.length > 0 && (
-          <Card style={styles.card} mode="outlined">
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.cardTitle}>
-                Recent Activity
+        {/* RECENT ACTIVITY */}
+        <Card style={[styles.card, { borderColor: subtleBorder }]}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Text variant="titleLarge" style={styles.sectionTitle}>
+                Recent activity
               </Text>
-              <View style={styles.daysRow}>
-                {last3DaysData.map((day) => (
-                  <View key={day.dateKey} style={styles.dayCard}>
-                    <Text variant="bodySmall" style={styles.dayLabel}>
-                      {day.isToday ? "Today" : day.dateLabel}
-                    </Text>
-                    <View style={[
-                        styles.checkCircle, 
-                        { 
-                          backgroundColor: day.count > 0 ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
-                          borderColor: day.count > 0 ? theme.colors.primary : 'transparent'
-                        }
-                    ]}>
-                      <Text
-                        variant="headlineSmall"
-                        style={{
-                          color: day.count > 0 ? theme.colors.primary : theme.colors.outline,
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        {day.count > 0 ? "✓" : "·"}
-                      </Text>
-                    </View>
-                    <Text variant="labelSmall" style={{marginTop:4, opacity: 0.7}}>
-                      {day.count} {day.count === 1 ? "entry" : "entries"}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-              
-              {longestStreak > 0 && (
-                <View style={{alignItems:'center', marginTop: 12}}>
-                   <Chip icon="trophy-variant" compact mode="outlined">
-                      Best Streak: {longestStreak} days
-                   </Chip>
-                </View>
-              )}
-            </Card.Content>
-          </Card>
-        )}
+              <Button
+                mode="text"
+                onPress={() => navigation.navigate("JournalList")}
+              >
+                View all
+              </Button>
+            </View>
 
-        {/* 3. Calendar */}
-        <Card style={styles.card} mode="elevated">
-          <Card.Content style={{paddingHorizontal: 4}}>
+            <View style={styles.daysRow}>
+              {last3Days.map((d) => {
+                const active = d.count > 0;
+                const pillBg = active
+                  ? theme.colors.primaryContainer
+                  : theme.colors.elevation.level1;
+
+                const pillText = active
+                  ? theme.colors.onPrimaryContainer
+                  : theme.colors.onSurfaceVariant;
+
+                return (
+                  <Pressable
+                    key={d.dateKey}
+                    onPress={() =>
+                      navigation.navigate("JournalList", {
+                        selectedDate: d.dateKey,
+                      })
+                    }
+                    style={[
+                      styles.dayPill,
+                      { backgroundColor: pillBg, borderColor: subtleBorder },
+                    ]}
+                  >
+                    <Text style={[styles.dayPillTop, { color: pillText }]}>
+                      {d.isToday ? "Today" : d.dateLabel}
+                    </Text>
+
+                    <Text style={[styles.dayPillMid, { color: pillText }]}>
+                      {active ? "✓" : "—"}
+                    </Text>
+
+                    <Text style={[styles.dayPillBottom, { color: pillText }]}>
+                      {d.count} {d.count === 1 ? "entry" : "entries"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* CALENDAR */}
+        <Card style={[styles.card, { borderColor: subtleBorder }]}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.sectionTitleCentered}>
+              Calendar
+            </Text>
             <Calendar
-              markingType="dot"
+              key={theme.dark ? "cal-dark" : "cal-light"}
+              theme={calendarTheme}
               markedDates={markedDates}
+              markingType="dot"
               onDayPress={handleDayPress}
-              theme={getCalendarTheme(theme)}
-              enableSwipeMonths={true}
+              maxDate={format(new Date(), "yyyy-MM-dd")}
+              disabledByDefault={false}
             />
           </Card.Content>
         </Card>
 
-        {/* 4. Quick Actions */}
-        <View style={styles.actionsRow}>
-          <Button
-            mode="contained"
-            onPress={handleCreateJournalForToday}
-            style={[styles.actionButton, { flex: 2 }]} // Make "New" button larger
-            icon="plus"
-            contentStyle={{height: 48}}
-          >
-            New Entry
-          </Button>
-          <Button
-            mode="contained-tonal"
-            onPress={() => navigation.navigate("JournalList")}
-            style={[styles.actionButton, { flex: 1 }]}
-            icon="book-open-page-variant"
-            contentStyle={{height: 48}}
-          >
-            View All
-          </Button>
-        </View>
+        {/* QUICK ACTIONS */}
+        <Card style={[styles.card, { borderColor: subtleBorder }]}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.sectionTitleCentered}>
+              Quick actions
+            </Text>
 
-        {/* 5. Bottom Navigation Links */}
-        <View style={styles.bottomNav}>
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate("Export")}
-            icon="export-variant"
-            compact
-          >
-            Export Data
-          </Button>
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate("Settings")}
-            icon="cog-outline"
-            compact
-          >
-            Settings
-          </Button>
-        </View>
+            <View style={styles.actionsRow}>
+              <Button
+                mode="outlined"
+                onPress={() => navigation.navigate("JournalList")}
+                style={styles.actionButton}
+                icon="notebook-outline"
+                compact
+              >
+                View All
+              </Button>
 
+              <Button
+                mode="contained"
+                onPress={handleCreateJournalForToday}
+                style={styles.actionButton}
+                icon="pencil"
+                compact
+                disabled={!encryptionKey}
+              >
+                New entry
+              </Button>
+            </View>
+
+            {/* keep your bottom nav actions, but styled cleaner */}
+            <View style={[styles.bottomNav, { borderTopColor: subtleBorder }]}>
+              <Button
+                mode="text"
+                onPress={() => navigation.navigate("Export")}
+                icon="export"
+              >
+                Export
+              </Button>
+              <Button
+                mode="text"
+                onPress={() => navigation.navigate("Settings")}
+                icon="cog"
+              >
+                Settings
+              </Button>
+            </View>
+          </Card.Content>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-  },
+  container: { flex: 1 },
+  content: { padding: 16 },
+
   card: {
     marginBottom: 16,
     borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
   },
-  cardTitle: {
+
+  heroCard: {
     marginBottom: 16,
-    textAlign: "center",
-    opacity: 0.8,
-    fontWeight: '600'
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: "hidden",
   },
-  
-  // Stats Row
-  statsRow: {
+  heroTopRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: 'center',
-    paddingVertical: 8
-  },
-  vertDivider: {
-    width: 1,
-    height: '80%',
-  },
-  statItem: {
     alignItems: "center",
-    flex: 1,
-  },
-  statNumber: {
-    fontWeight: "bold",
-    marginBottom: 0,
-    textAlign: "center",
-  },
-  emptyStatItem: {
-    alignItems: 'center',
-    paddingVertical: 12
-  },
-
-  // Recent Activity
-  daysRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 8
-  },
-  dayCard: {
-    alignItems: "center",
-    flex: 1,
-  },
-  dayLabel: {
-    marginBottom: 8,
-    opacity: 0.7,
-    fontWeight: '500'
-  },
-  checkCircle: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-  },
-
-  // Actions
-  actionsRow: {
-    flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
-    marginBottom: 16,
   },
-  actionButton: {
-    borderRadius: 12,
+  heroText: { flex: 1 },
+  heroTitle: { fontWeight: "800" },
+  heroSubtitle: { opacity: 0.7, marginTop: 4, lineHeight: 20 },
+
+  statGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 16,
+  },
+statTile: {
+  flex: 1,
+  borderRadius: 14,
+  borderWidth: 1,
+  paddingVertical: 14,
+  paddingHorizontal: 14,
+  alignItems: "center",      // add
+  justifyContent: "center",  // add
+},
+statLabel: {
+  opacity: 0.75,
+  marginBottom: 6,
+  textAlign: "center",       // add
+},
+statValue: {
+  fontWeight: "800",
+  letterSpacing: -0.5,
+  textAlign: "center",       // add
+},
+
+  heroChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 14,
+  },
+  heroChip: {
+    alignSelf: "flex-start",
   },
 
-  // Bottom Nav
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sectionTitle: { fontWeight: "800" },
+  sectionTitleCentered: {
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+
+  daysRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  dayPill: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: "center",
+  },
+  dayPillTop: { fontSize: 12, fontWeight: "700", opacity: 0.9 },
+  dayPillMid: { fontSize: 22, fontWeight: "900", marginVertical: 4 },
+  dayPillBottom: { fontSize: 12, opacity: 0.85 },
+
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    gap: 12,
+    marginTop: 4,
+  },
+  actionButton: { flex: 1, borderRadius: 14 },
+
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginVertical: 10,
-    opacity: 0.8
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
+  statsRow: {
+  flexDirection: "row",
+  justifyContent: "space-around",
+  alignItems: "stretch", // add
+},
+statItem: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center", // add
+  minHeight: 90,           // add (adjust 80-110)
+},
+statNumber: {
+  fontWeight: "bold",
+  marginBottom: 6,         // little spacing
+  textAlign: "center",
+},
+
 });
 
 export default HomeScreen;

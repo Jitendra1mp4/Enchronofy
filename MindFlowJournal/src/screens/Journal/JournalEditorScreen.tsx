@@ -208,7 +208,6 @@ const handleSave = async (showAlert = false) => {
       journalDate = existingJournal.date;
     } else if (selectedDate) {
       const [year, month, day] = selectedDate.split("-").map(Number);
-      const dateObj = new Date(year, month - 1, day, 12);
       
       // ✅ VALIDATION: Prevent future dates
       const today = new Date();
@@ -228,7 +227,8 @@ const handleSave = async (showAlert = false) => {
         );
         return false;
       }
-      
+
+      const dateObj = new Date(year, month - 1, day, 12);      
       journalDate = dateObj.toISOString();
     }
 
@@ -316,7 +316,7 @@ const handleSave = async (showAlert = false) => {
                  />
               </View>
 
-              <Button
+              {/* <Button
                 mode="contained"
                 icon="check"
                 onPress={() => handleSave(true)}
@@ -327,7 +327,7 @@ const handleSave = async (showAlert = false) => {
                 labelStyle={styles.saveButtonLabel}
               >
                 Save
-              </Button>
+              </Button> */}
             </View>
           </View>
 
@@ -353,11 +353,11 @@ const handleSave = async (showAlert = false) => {
                 {text.trim() ? text : (
                   "### ✨ Quick Guide\n" +
                   "Start writing in **Edit** mode using these formats:\n\n" +
-                  "• `# Big Header`\n" +
-                  "• `## Medium Header`\n" +
-                  "• `**Bold Text**`\n" +
-                  "• `*Italic Text*`\n" +
-                  "• `- List item`"
+                  "• `Start with # for Big Header`\n" +
+                  "• `Start with ## for Medium Header`\n" +
+                  "• `Start with - for unordered List item`"+
+                  "• `Surround like **Bold Text** for bold text`\n" +
+                  "• `Surround like *Italic Text* for italic`\n" 
                 )}
               </Markdown>
             </View>

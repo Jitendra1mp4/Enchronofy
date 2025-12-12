@@ -1,5 +1,7 @@
+// src/navigation/MainStack.tsx
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
+import { View } from "react-native"; // Don't forget this import
 import { IconButton, useTheme } from "react-native-paper";
 import APP_CONFIG from "../config/appConfig";
 import ExportScreen from "../screens/Export/ExportScreen";
@@ -17,17 +19,28 @@ export const MainStack: React.FC = () => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
-  const commonHeaderOptions = {
+  // We define a helper function that takes 'navigation' as an argument
+  const getHeaderOptions = (navigation: any, title: string) => ({
+    title,
     headerStyle: { backgroundColor: theme.colors.surface },
-    headerTintColor: theme.colors.onSurface,   
+    headerTintColor: theme.colors.onSurface,
     headerRight: () => (
-       <IconButton
-        icon="lock-outline"
-        onPress={() => dispatch(logout())}
-        iconColor={theme.colors.primary}
-      />
+      <View style={{ display: "flex", flexDirection: "row" }}>
+        {/* Settings Button */}
+        <IconButton
+          icon="cog-outline"
+          onPress={() => navigation.navigate("Settings")}
+          iconColor={theme.colors.primary}
+        />
+        {/* Lock/Logout Button */}
+        <IconButton
+          icon="lock-outline"
+          onPress={() => dispatch(logout())}
+          iconColor={theme.colors.primary}
+        />
+      </View>
     ),
-  };
+  });
 
   return (
     <Stack.Navigator
@@ -39,32 +52,44 @@ export const MainStack: React.FC = () => {
       <Stack.Screen
         name="Home"
         component={HomeScreen}
-        options={{ ...commonHeaderOptions, title: APP_CONFIG.displayName }}
+        options={({ navigation }) => getHeaderOptions(navigation, APP_CONFIG.displayName)}
       />
       <Stack.Screen
         name="JournalList"
         component={JournalListScreen}
-        options={{ ...commonHeaderOptions, title: "📖 My Journals" }}
+        options={({ navigation }) => getHeaderOptions(navigation, "📖 My Journals")}
       />
       <Stack.Screen
         name="JournalEditor"
         component={JournalEditorScreen}
-        options={{ ...commonHeaderOptions, title: "✍️ New Journal" }}
+        options={({ navigation }) => getHeaderOptions(navigation, "✍️ New Journal")}
       />
       <Stack.Screen
         name="JournalDetail"
         component={JournalDetailScreen}
-        options={{ ...commonHeaderOptions, title: "📄 Journal" }}
+        options={({ navigation }) => getHeaderOptions(navigation, "📄 Journal")}
       />
       <Stack.Screen
         name="Export"
         component={ExportScreen}
-        options={{ ...commonHeaderOptions, title: "📤 Export" }}
+        options={({ navigation }) => getHeaderOptions(navigation, "📤 Export")}
       />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ ...commonHeaderOptions, title: "⚙️ Settings" }}
+        // Settings screen doesn't need a settings button, so we can use a simpler header or just the lock
+        options={{
+            title: "⚙️ Settings",
+            headerStyle: { backgroundColor: theme.colors.surface },
+            headerTintColor: theme.colors.onSurface,
+            headerRight: () => (
+                <IconButton
+                icon="lock-outline"
+                onPress={() => dispatch(logout())}
+                iconColor={theme.colors.primary}
+                />
+            ),
+        }}
       />
     </Stack.Navigator>
   );
