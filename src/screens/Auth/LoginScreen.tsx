@@ -63,6 +63,8 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
 
     setIsLoading(true);
+    // resolves ui update for loading state not visible
+     await new Promise(resolve => setImmediate(resolve));
     try {
       console.log("🔓 Unlocking...");
 
