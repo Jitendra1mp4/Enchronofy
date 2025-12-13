@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
   HelperText,
@@ -7,22 +7,25 @@ import {
   Text,
   TextInput,
   useTheme,
-} from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import CryptoManager from '../../services/cryptoManager';
+} from "react-native-paper";
+import { SafeAreaView } from "react-native-safe-area-context";
+import CryptoManager from "../../services/cryptoManager";
 import {
   ResetStorage,
   getVault,
   saveRecoveryKeyHash,
   saveVault,
-} from '../../services/unifiedStorageService';
-import { useAppDispatch } from '../../stores/hooks';
-import { setAuthenticated, setEncryptionKey } from '../../stores/slices/authSlice';
-import type { QAPair } from '../../types/crypto';
-import { Alert } from '../../utils/alert';
+} from "../../services/unifiedStorageService";
+import { useAppDispatch } from "../../stores/hooks";
+import {
+  setAuthenticated,
+  setEncryptionKey,
+} from "../../stores/slices/authSlice";
+import type { QAPair } from "../../types/crypto";
+import { Alert } from "../../utils/alert";
 
-type RecoveryMethod = 'answers' | 'recoveryKey';
-type RecoveryStep = 'method' | 'verify' | 'newPassword';
+type RecoveryMethod = "answers" | "recoveryKey";
+type RecoveryStep = "method" | "verify" | "newPassword";
 
 const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
   navigation,
@@ -32,18 +35,19 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
   // const { setEncryptionKey } = useAuth();
 
   // UI State
-  const [recoveryMethod, setRecoveryMethod] = useState<RecoveryMethod>('answers');
-  const [step, setStep] = useState<RecoveryStep>('method');
+  const [recoveryMethod, setRecoveryMethod] =
+    useState<RecoveryMethod>("answers");
+  const [step, setStep] = useState<RecoveryStep>("method");
 
   // Security Questions Recovery
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
 
   // Recovery Key Recovery
-  const [recoveryKey, setRecoveryKey] = useState('');
+  const [recoveryKey, setRecoveryKey] = useState("");
 
   // New Password
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -64,16 +68,16 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
       const loadedVault = await getVault();
       if (!loadedVault) {
         Alert.alert(
-          'No Account Found',
-          'No account found. Please create a new account.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          "No Account Found",
+          "No account found. Please create a new account.",
+          [{ text: "OK", onPress: () => navigation.goBack() }],
         );
         return;
       }
       setVaultState(loadedVault);
     } catch (error) {
-      console.error('Error loading vault:', error);
-      Alert.alert('Error', 'Failed to load account data');
+      console.error("Error loading vault:", error);
+      Alert.alert("Error", "Failed to load account data");
     }
   };
 
@@ -84,17 +88,15 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     if (!vault) return;
 
     // Get selected question IDs from vault
-    const questionIds = vault.security_questions.map(
-      (sq: any) => sq.question
-    );
+    const questionIds = vault.security_questions.map((sq: any) => sq.question);
 
     // Check if all questions are answered
     const allAnswered = questionIds.every(
-      (qId: string) => answers[qId] && answers[qId].trim().length > 0
+      (qId: string) => answers[qId] && answers[qId].trim().length > 0,
     );
 
     if (!allAnswered) {
-      Alert.alert('Error', 'Please answer all security questions');
+      Alert.alert("Error", "Please answer all security questions");
       return;
     }
 
@@ -112,15 +114,15 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
       // Success! Move to password reset step
       Alert.alert(
-        'Answers Verified!',
-        'Your security answers are correct. Now create a new password.'
+        "Answers Verified!",
+        "Your security answers are correct. Now create a new password.",
       );
-      setStep('newPassword');
+      setStep("newPassword");
     } catch (error) {
-      console.error('Answer verification error:', error);
+      console.error("Answer verification error:", error);
       Alert.alert(
-        'Incorrect Answers',
-        'One or more answers are incorrect. Please try again.'
+        "Incorrect Answers",
+        "One or more answers are incorrect. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -134,7 +136,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     if (!vault) return;
 
     if (!recoveryKey.trim()) {
-      Alert.alert('Error', 'Please enter your recovery key');
+      Alert.alert("Error", "Please enter your recovery key");
       return;
     }
 
@@ -142,19 +144,19 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
     try {
       // Attempt to verify recovery key by trying to recover
-      CryptoManager.recoverAndReset(vault, recoveryKey, newPassword || 'temp');
+      CryptoManager.recoverAndReset(vault, recoveryKey, newPassword || "temp");
 
       // Recovery key is valid
       Alert.alert(
-        'Recovery Key Verified!',
-        'Your recovery key is valid. Now create a new password.'
+        "Recovery Key Verified!",
+        "Your recovery key is valid. Now create a new password.",
       );
-      setStep('newPassword');
+      setStep("newPassword");
     } catch (error) {
-      console.error('Recovery key verification error:', error);
+      console.error("Recovery key verification error:", error);
       Alert.alert(
-        'Invalid Recovery Key',
-        'The recovery key you entered is incorrect. Please check and try again.'
+        "Invalid Recovery Key",
+        "The recovery key you entered is incorrect. Please check and try again.",
       );
     } finally {
       setIsLoading(false);
@@ -168,12 +170,12 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     if (!vault) return;
 
     if (!isPasswordValid) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      Alert.alert("Error", "Password must be at least 8 characters");
       return;
     }
 
     if (!passwordsMatch) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert("Error", "Passwords do not match");
       return;
     }
 
@@ -183,10 +185,10 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
       let newVault;
       let newRecoveryKeyResult: string | undefined;
 
-      if (recoveryMethod === 'answers') {
+      if (recoveryMethod === "answers") {
         // For security answers, use public API to rebuild vault
         const questionIds = vault.security_questions.map(
-          (sq: any) => sq.question
+          (sq: any) => sq.question,
         );
         const qaPairs: QAPair[] = questionIds.map((qId: string) => ({
           questionId: qId,
@@ -200,14 +202,14 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
         newVault = CryptoManager.rebuildVaultWithNewPassword(
           vault,
           dk,
-          newPassword
+          newPassword,
         );
       } else {
         // For recovery key method, use recoverAndReset flow
         const result = CryptoManager.recoverAndReset(
           vault,
           recoveryKey,
-          newPassword
+          newPassword,
         );
         newVault = result.newVault;
         newRecoveryKeyResult = result.newRecoveryKey;
@@ -221,24 +223,24 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
         await saveRecoveryKeyHash(newRecoveryKeyResult);
 
         Alert.alert(
-          'Password Reset Successfully!',
+          "Password Reset Successfully!",
           `Your new password has been set.\n\n` +
             `⚠️ Your recovery key has also been changed:\n\n${newRecoveryKeyResult}\n\n` +
             `Please save this new key in a safe place.`,
           [
             {
-              text: 'I have saved the new Recovery Key',
+              text: "I have saved the new Recovery Key",
               onPress: () => {
                 // Unlock with new password
                 const { dk } = CryptoManager.unlockWithPassword(
                   newVault,
-                  newPassword
+                  newPassword,
                 );
                 dispatch(setAuthenticated(true));
                 dispatch(setEncryptionKey(dk));
               },
             },
-          ]
+          ],
         );
       } else {
         // For security answers, just unlock with new password
@@ -246,13 +248,13 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
         dispatch(setAuthenticated(true));
         dispatch(setEncryptionKey(dk));
 
-        Alert.alert('Success!', 'Your password has been reset successfully');
+        Alert.alert("Success!", "Your password has been reset successfully");
       }
     } catch (error) {
-      console.error('Password reset error:', error);
+      console.error("Password reset error:", error);
       Alert.alert(
-        'Error',
-        `Failed to reset password: ${error instanceof Error ? error.message : 'Unknown error'}`
+        "Error",
+        `Failed to reset password: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     } finally {
       setIsLoading(false);
@@ -270,7 +272,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
         {isLoading && <ProgressBar indeterminate style={styles.progress} />}
 
-        {step === 'method' && (
+        {step === "method" && (
           <>
             <Text variant="bodyMedium" style={styles.subtitle}>
               Choose how you want to recover your account
@@ -278,29 +280,31 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
             <View style={styles.methodContainer}>
               <Button
-                mode={recoveryMethod === 'answers' ? 'contained' : 'outlined'}
-                onPress={() => setRecoveryMethod('answers')}
+                mode={recoveryMethod === "answers" ? "contained" : "outlined"}
+                onPress={() => setRecoveryMethod("answers")}
                 style={styles.methodButton}
               >
                 Security Questions
               </Button>
               <Button
-                mode={recoveryMethod === 'recoveryKey' ? 'contained' : 'outlined'}
-                onPress={() => setRecoveryMethod('recoveryKey')}
+                mode={
+                  recoveryMethod === "recoveryKey" ? "contained" : "outlined"
+                }
+                onPress={() => setRecoveryMethod("recoveryKey")}
                 style={styles.methodButton}
               >
                 Recovery Key
               </Button>
             </View>
 
-            {recoveryMethod === 'answers' && (
+            {recoveryMethod === "answers" && (
               <>
                 <Text variant="bodySmall" style={styles.methodDescription}>
                   Answer the security questions you set up during registration
                 </Text>
                 <Button
                   mode="contained"
-                  onPress={() => setStep('verify')}
+                  onPress={() => setStep("verify")}
                   style={styles.button}
                 >
                   Continue with Security Questions
@@ -308,14 +312,14 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
               </>
             )}
 
-            {recoveryMethod === 'recoveryKey' && (
+            {recoveryMethod === "recoveryKey" && (
               <>
                 <Text variant="bodySmall" style={styles.methodDescription}>
                   Enter the recovery key you saved during registration
                 </Text>
                 <Button
                   mode="contained"
-                  onPress={() => setStep('verify')}
+                  onPress={() => setStep("verify")}
                   style={styles.button}
                 >
                   Continue with Recovery Key
@@ -325,7 +329,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
           </>
         )}
 
-        {step === 'verify' && recoveryMethod === 'answers' && vault && (
+        {step === "verify" && recoveryMethod === "answers" && vault && (
           <>
             <Text variant="bodyMedium" style={styles.subtitle}>
               Answer your security questions
@@ -337,8 +341,8 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
                   {index + 1}. {sq.question}
                 </Text>
                 <TextInput
-                  value={answers[sq.question] || ''}
-                  onChangeText={text =>
+                  value={answers[sq.question] || ""}
+                  onChangeText={(text) =>
                     setAnswers({ ...answers, [sq.question]: text })
                   }
                   mode="outlined"
@@ -356,12 +360,12 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
               disabled={isLoading}
               loading={isLoading}
             >
-              { isLoading ? "Verifying securely..." : "Verify Answers"}
+              {isLoading ? "Verifying securely..." : "Verify Answers"}
             </Button>
 
             <Button
               mode="text"
-              onPress={() => setStep('method')}
+              onPress={() => setStep("method")}
               style={styles.link}
               disabled={isLoading}
             >
@@ -370,7 +374,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
           </>
         )}
 
-        {step === 'verify' && recoveryMethod === 'recoveryKey' && (
+        {step === "verify" && recoveryMethod === "recoveryKey" && (
           <>
             <Text variant="bodyMedium" style={styles.subtitle}>
               Enter your recovery key
@@ -401,7 +405,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
             <Button
               mode="text"
-              onPress={() => setStep('method')}
+              onPress={() => setStep("method")}
               style={styles.link}
               disabled={isLoading}
             >
@@ -410,7 +414,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
           </>
         )}
 
-        {step === 'newPassword' && (
+        {step === "newPassword" && (
           <>
             <Text variant="bodyMedium" style={styles.subtitle}>
               ✓ Verified! Create your new password
@@ -425,15 +429,15 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
               style={styles.input}
               right={
                 <TextInput.Icon
-                  icon={showNewPassword ? 'eye-off' : 'eye'}
+                  icon={showNewPassword ? "eye-off" : "eye"}
                   onPress={() => setShowNewPassword(!showNewPassword)}
                 />
               }
             />
             <HelperText type="info" visible={newPassword.length > 0}>
               {isPasswordValid
-                ? '✓ Password is strong enough'
-                : '✗ Password must be at least 8 characters'}
+                ? "✓ Password is strong enough"
+                : "✗ Password must be at least 8 characters"}
             </HelperText>
 
             <TextInput
@@ -445,18 +449,18 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
               style={styles.input}
               right={
                 <TextInput.Icon
-                  icon={showConfirmPassword ? 'eye-off' : 'eye'}
+                  icon={showConfirmPassword ? "eye-off" : "eye"}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                 />
               }
             />
             <HelperText
-              type={passwordsMatch ? 'info' : 'error'}
+              type={passwordsMatch ? "info" : "error"}
               visible={confirmPassword.length > 0}
             >
               {passwordsMatch
-                ? '✓ Passwords match'
-                : '✗ Passwords do not match'}
+                ? "✓ Passwords match"
+                : "✗ Passwords do not match"}
             </HelperText>
 
             <Button
@@ -466,15 +470,15 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
               disabled={!isPasswordValid || !passwordsMatch || isLoading}
               loading={isLoading}
             >
-             {isLoading?"Working Securely...":"Set New Password"}
+              {isLoading ? "Working Securely..." : "Set New Password"}
             </Button>
 
             <Button
               mode="text"
               onPress={() => {
-                setStep('verify');
-                setNewPassword('');
-                setConfirmPassword('');
+                setStep("verify");
+                setNewPassword("");
+                setConfirmPassword("");
               }}
               style={styles.link}
               disabled={isLoading}
@@ -484,38 +488,46 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
           </>
         )}
 
-        {step === 'method' && (
+        {step === "method" && (
           <>
             <Button
               mode="text"
               onPress={() => navigation.goBack()}
               style={styles.link}
               disabled={isLoading}
-              >
+            >
               Back to Login
             </Button>
             <Button
               mode="text"
               onPress={async () => {
-                
-
-                 Alert.alert(
-                      'Destroy Database!',
-                      'Are you sure you want to destroy DB everything will be reset.',
-                      [ { text: 'Cancel', onPress: () => console.log("Destroy canceled") } ,
-                        { text: 'Yes', onPress: () => {
-                          ResetStorage()
-                          navigation.goBack()
-                        } } ]
-                    );
-
+                Alert.alert(
+                  "Destroy Database!",
+                  "Are you sure you want to destroy DB everything will be reset.",
+                  [
+                    {
+                      text: "Cancel",
+                      onPress: () => console.log("Destroy canceled"),
+                    },
+                    {
+                      text: "Yes",
+                      onPress: () => {
+                        ResetStorage();
+                        navigation.reset({
+                          index: 0,
+                          routes: [{ name: "Signup" }],
+                        });
+                      },
+                    },
+                  ],
+                );
               }}
               style={styles.link}
               disabled={isLoading}
-              >
+            >
               ❌ Destroy Database
             </Button>
-            </>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -544,7 +556,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   methodContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 24,
     gap: 8,
   },
@@ -556,7 +568,7 @@ const styles = StyleSheet.create({
   },
   questionText: {
     marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   input: {
     marginBottom: 4,

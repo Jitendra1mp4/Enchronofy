@@ -1,7 +1,16 @@
 import APP_CONFIG from "@/src/config/appConfig";
-import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { Button, Text, TextInput, useTheme } from "react-native-paper";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useState } from "react";
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import {
+  Button,
+  Card,
+  Divider,
+  ProgressBar,
+  Text,
+  TextInput,
+  useTheme,
+} from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CryptoManager from "../../services/cryptoManager";
 import { getVault, isFirstLaunch } from "../../services/unifiedStorageService";
@@ -22,33 +31,46 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
   const [vaultReady, setVaultReady] = useState(false);
+  const [cachedVault, setCachedVault] = useState<any>(null);
 
-  useEffect(() => {
-    const initializeLoginState = async () => {
-      try {
-        console.log(
-          "🔑 LoginScreen: Initializing via unifiedStorageService...",
-        );
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-        // Check first launch
-        const firstTime = await isFirstLaunch();
-        setIsFirstTime(firstTime);
+      const initializeLoginState = async () => {
+        try {
+          // optional: show loading state while checking
+          setVaultReady(false);
 
-        // Preload vault via unified service
-        const vaultData = await getVault();
-        console.log("✅ Vault status via unifiedStorageService:", !!vaultData);
-        setVaultReady(!!vaultData);
-      } catch (error) {
-        console.error("❌ unifiedStorageService init failed:", error);
-        setVaultReady(false);
-      }
-    };
+          const firstTime = await isFirstLaunch();
+          const vaultData = await getVault();
 
-    initializeLoginState();
-  }, []);
+          if (!isActive) return;
+
+          setIsFirstTime(firstTime);
+          setCachedVault(vaultData); // if you added caching
+          setVaultReady(!!vaultData);
+        } catch (error) {
+          console.error("Login init failed:", error);
+
+          if (!isActive) return;
+
+          setCachedVault(null);
+          setVaultReady(false);
+        }
+      };
+
+      initializeLoginState();
+
+      // cleanup when screen loses focus/unmount
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   const handleLogin = async () => {
-    setShowPassword(false)
+    setShowPassword(false);
     if (!password.trim()) {
       Alert.alert("Oops!", "Please enter your password");
       return;
@@ -68,14 +90,19 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       console.log("🔓 Unlocking...");
 
-      const vaultData = await getVault();
-      if (!vaultData) {
+      const vaultToUse = cachedVault ?? (await getVault());
+      if (!vaultToUse) {
         Alert.alert("Oops!", "No account found. Please create an account.");
         return;
       }
 
-      const { dk } = CryptoManager.unlockWithPassword(vaultData as any, password);
-      
+      const unlockResult: any = CryptoManager.unlockWithPassword(
+        vaultToUse as any,
+        password,
+      );
+      const dk =
+        typeof unlockResult === "string" ? unlockResult : unlockResult.dk;
+
       console.log("✅ DK unlocked successfully");
 
       // Update Redux
@@ -95,112 +122,191 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-<SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.content}>
-        <Text variant="displaySmall" style={styles.title}>
-         {APP_CONFIG.displayName}
-        </Text>
-        <Text variant="bodyLarge" style={styles.subtitle}>
-          Secure. Private. Yours.
-        </Text>
-
-        {!vaultReady && (
-          <View style={styles.vaultLoading}>
-            <Text>Loading secure storage...</Text>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
+      <KeyboardAvoidingView
+        style={styles.keyboard}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Text variant="headlineMedium" style={styles.title}>
+              {APP_CONFIG.displayName}
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={[
+                styles.subtitle,
+                { color: theme.colors.onSurfaceVariant },
+              ]}
+            >
+              Secure. Private. Yours.
+            </Text>
           </View>
-        )}
 
-       <TextInput
-          label="🔑"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          mode="outlined"
-          style={styles.input}
-          autoFocus={vaultReady}
-          onSubmitEditing={handleLogin}
-          // ✅ FIX: Disable editing when loading OR vault not ready
-          editable={vaultReady && !isLoading} 
-          right={
-            <TextInput.Icon
-              icon={showPassword ? 'eye-off' : 'eye'}
-              onPress={() => setShowPassword(!showPassword)}
-            />
-          }
-        />
-
-        <Button
-          mode="contained"
-          onPress={handleLogin}
-          disabled={isLoading || !vaultReady || !password.trim()}
-          loading={isLoading}
-          style={styles.button}
-        >
-          {isLoading ? '🔓 Unlocking...' : '🔐 Unlock'}
-        </Button>
-
-        <Button
-          mode="text"
-          onPress={() => navigation.navigate('ForgotPassword')}
-          disabled={isLoading}
-          style={styles.link}
-        >
-         😵‍💫 Forgot Password?
-        </Button>
-
-        {isFirstTime && (
-          <Button
-            mode="outlined"
-            onPress={() => navigation.navigate('Signup')}
-            disabled={isLoading}
-            style={styles.signupButton}
+          <Card
+            style={[styles.card, { backgroundColor: theme.colors.surface }]}
           >
-            First time? Lets set it up...
-          </Button>
-        )}
-      </View>
+            <Card.Content style={styles.cardContent}>
+              {!vaultReady && (
+                <View style={styles.loadingBox}>
+                  <ProgressBar indeterminate />
+                  <Text
+                    variant="bodySmall"
+                    style={[
+                      styles.loadingText,
+                      { color: theme.colors.onSurfaceVariant },
+                    ]}
+                  >
+                    Loading secure storage...
+                  </Text>
+                </View>
+              )}
+
+              {isLoading && (
+                <ProgressBar indeterminate style={styles.inlineProgress} />
+              )}
+
+              <TextInput
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                mode="outlined"
+                style={styles.input}
+                autoFocus={vaultReady}
+                onSubmitEditing={handleLogin}
+                editable={vaultReady && !isLoading}
+                left={<TextInput.Icon icon="lock-outline" />}
+                right={
+                  <TextInput.Icon
+                    icon={showPassword ? "eye-off" : "eye"}
+                    onPress={() => setShowPassword((v) => !v)}
+                    disabled={!vaultReady || isLoading}
+                  />
+                }
+              />
+
+              <Button
+                mode="contained"
+                onPress={handleLogin}
+                disabled={isLoading || !vaultReady || !password.trim()}
+                loading={isLoading}
+                style={styles.primaryButton}
+                contentStyle={styles.primaryButtonContent}
+              >
+                {isLoading ? "Unlocking..." : "Unlock"}
+              </Button>
+
+              <Divider style={styles.divider} />
+
+              <Button
+                mode="text"
+                onPress={() => navigation.navigate("ForgotPassword")}
+                disabled={isLoading}
+                style={styles.link}
+              >
+                Forgot password?
+              </Button>
+
+              {(isFirstTime || !vaultReady) && (
+                <Button
+                  mode="outlined"
+                  onPress={() => navigation.navigate("Signup")}
+                  disabled={isLoading}
+                  icon="account-plus-outline"
+                  style={styles.secondaryButton}
+                  contentStyle={styles.secondaryButtonContent}
+                >
+                  First time? Let’s set it up
+                </Button>
+              )}
+
+              <Text
+                variant="bodySmall"
+                style={[
+                  styles.footer,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
+                Your journals are encrypted and stored on your device.
+              </Text>
+            </Card.Content>
+          </Card>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  keyboard: { flex: 1 },
   content: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 16,
   },
   title: {
-    textAlign: 'center',
-    marginBottom: 8,
+    textAlign: "center",
+    fontWeight: "700",
   },
   subtitle: {
-    textAlign: 'center',
-    marginBottom: 40,
-    opacity: 0.7,
+    marginTop: 6,
+    textAlign: "center",
+  },
+  card: {
+    borderRadius: 16,
+    width: "100%",
+    maxWidth: 440,
+    alignSelf: "center",
+  },
+  cardContent: {
+    paddingVertical: 12,
+  },
+  loadingBox: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  loadingText: {
+    textAlign: "center",
+  },
+  inlineProgress: {
+    marginBottom: 12,
   },
   input: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  button: {
-    marginTop: 8,
-    marginBottom: 16,
+  primaryButton: {
+    marginTop: 4,
+    borderRadius: 12,
+  },
+  primaryButtonContent: {
+    paddingVertical: 8,
+  },
+  divider: {
+    marginVertical: 14,
   },
   link: {
-    marginTop: 8,
+    alignSelf: "center",
   },
-  signupButton: {
-    marginTop: 32,
+  secondaryButton: {
+    marginTop: 10,
+    borderRadius: 12,
   },
-  vaultLoading: { // NEW - minimal addition
-    alignItems: 'center',
-    marginBottom: 16,
-    padding: 12,
-  }
-
+  secondaryButtonContent: {
+    paddingVertical: 6,
+  },
+  footer: {
+    marginTop: 14,
+    textAlign: "center",
+    opacity: 0.9,
+  },
 });
 
 export default LoginScreen;
