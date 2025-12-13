@@ -9,7 +9,7 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainStack navigation={""}/> : <AuthStack />}
+      {isAuthenticated ? <MainStack/> : <AuthStack />}
     </NavigationContainer>
   );
 };

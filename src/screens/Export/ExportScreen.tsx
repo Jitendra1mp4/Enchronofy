@@ -24,7 +24,7 @@ import {
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
 import { Alert } from "../../utils/alert";
 
-const ExportScreen: React.FC = () => {
+const ExportScreen: React.FC<{navigation:any}> = ({navigation}) => {
   const theme = useTheme();
   // const { encryptionKey } = useAuth();
   const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
@@ -151,6 +151,25 @@ const ExportScreen: React.FC = () => {
               Export your journal entries in various formats. You can export all
               entries or filter by date range.
             </Text>
+          </Card.Content>
+        </Card>
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.title}>
+              Import Existing Journals
+            </Text>
+            <Text variant="bodyMedium" style={styles.description}>
+              Export your journal entries from json formats export. You can import all
+              entries or filter by date range.
+            </Text>
+            <Button
+            mode="outlined"
+            onPress={() => navigation.navigate('Import')}
+            style={{marginTop:20}}
+            icon="database-import"
+          >
+            Import from JSON
+          </Button>
           </Card.Content>
         </Card>
         {/* Date Range Filter */}

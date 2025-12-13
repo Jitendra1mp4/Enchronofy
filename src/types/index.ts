@@ -43,6 +43,7 @@ export type RootStackParamList = {
   DateJournalList: { selectedDate: string };
   Calendar: undefined;
   Export: undefined;
+  Import: undefined;
   Settings: undefined;
 };
 

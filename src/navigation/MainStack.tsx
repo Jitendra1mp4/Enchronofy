@@ -6,6 +6,7 @@ import { IconButton, useTheme } from "react-native-paper";
 import APP_CONFIG from "../config/appConfig";
 import ExportScreen from "../screens/Export/ExportScreen";
 import HomeScreen from "../screens/Home/HomeScreen";
+import ImportScreen from "../screens/ImportScreen";
 import JournalDetailScreen from "../screens/Journal/JournalDetailScreen";
 import JournalEditorScreen from "../screens/Journal/JournalEditorScreen";
 import JournalListScreen from "../screens/Journal/JournalListScreen";
@@ -52,17 +53,23 @@ export const MainStack: React.FC = () => {
       <Stack.Screen
         name="Home"
         component={HomeScreen}
-        options={({ navigation }) => getHeaderOptions(navigation, APP_CONFIG.displayName)}
+        options={({ navigation }) =>
+          getHeaderOptions(navigation, APP_CONFIG.displayName)
+        }
       />
       <Stack.Screen
         name="JournalList"
         component={JournalListScreen}
-        options={({ navigation }) => getHeaderOptions(navigation, "📖 My Journals")}
+        options={({ navigation }) =>
+          getHeaderOptions(navigation, "📖 My Journals")
+        }
       />
       <Stack.Screen
         name="JournalEditor"
         component={JournalEditorScreen}
-        options={({ navigation }) => getHeaderOptions(navigation, "✍️ New Journal")}
+        options={({ navigation }) =>
+          getHeaderOptions(navigation, "✍️ New Journal")
+        }
       />
       <Stack.Screen
         name="JournalDetail"
@@ -74,21 +81,27 @@ export const MainStack: React.FC = () => {
         component={ExportScreen}
         options={({ navigation }) => getHeaderOptions(navigation, "📤 Export")}
       />
+
+      <Stack.Screen
+        name="Import"
+        component={ImportScreen}
+        options={({ navigation }) => getHeaderOptions(navigation, "🗃️ Import")}
+      />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
         // Settings screen doesn't need a settings button, so we can use a simpler header or just the lock
         options={{
-            title: "⚙️ Settings",
-            headerStyle: { backgroundColor: theme.colors.surface },
-            headerTintColor: theme.colors.onSurface,
-            headerRight: () => (
-                <IconButton
-                icon="lock-outline"
-                onPress={() => dispatch(logout())}
-                iconColor={theme.colors.primary}
-                />
-            ),
+          title: "⚙️ Settings",
+          headerStyle: { backgroundColor: theme.colors.surface },
+          headerTintColor: theme.colors.onSurface,
+          headerRight: () => (
+            <IconButton
+              icon="lock-outline"
+              onPress={() => dispatch(logout())}
+              iconColor={theme.colors.primary}
+            />
+          ),
         }}
       />
     </Stack.Navigator>
