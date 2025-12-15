@@ -6,10 +6,9 @@ import {
   Button,
   Card,
   Divider,
-  ProgressBar,
   Text,
   TextInput,
-  useTheme,
+  useTheme
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CryptoManager from "../../services/cryptoManager";
@@ -149,7 +148,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             style={[styles.card, { backgroundColor: theme.colors.surface }]}
           >
             <Card.Content style={styles.cardContent}>
-              {!vaultReady && isLoading && (
+              {/* {!vaultReady && isLoading && (
                 <View style={styles.loadingBox}>
                   <ProgressBar indeterminate />
                   <Text
@@ -162,11 +161,11 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     Loading secure storage...
                   </Text>
                 </View>
-              )}
+              )} */}
 
-              {isLoading && (
+              {/* {isLoading && (
                 <ProgressBar indeterminate style={styles.inlineProgress} />
-              )}
+              )} */}
 
               <TextInput
                 label="Password"
