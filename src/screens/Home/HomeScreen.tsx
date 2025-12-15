@@ -228,7 +228,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               >
                 {`Longest streak: ${longestStreak}`}
               </Chip>
-
+{/* 
               <Chip
                 icon="calendar-check-outline"
                 compact
@@ -239,7 +239,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 onPress={() => navigation.navigate("JournalList")}
               >
                 View journals
-              </Chip>
+              </Chip> */}
             </View>
           </Card.Content>
         </Card>
@@ -426,6 +426,8 @@ statValue: {
 },
 
   heroChipsRow: {
+    display:"flex",
+    justifyContent:'center',
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
