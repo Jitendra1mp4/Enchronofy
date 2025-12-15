@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   // Floating Bar
   bottomBar: {
     position: "absolute",
-    bottom: 24,
+    bottom: 80,
     left: 20,
     right: 20,
     flexDirection: "row",
