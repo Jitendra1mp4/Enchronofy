@@ -18,7 +18,7 @@ import {
   Chip,
   IconButton,
   Text,
-  useTheme,
+  useTheme
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -354,9 +354,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Button
                 mode="text"
                 onPress={() => navigation.navigate("Export")}
-                icon="export"
+                icon="import"
               >
-                Export
+                Import/Export
               </Button>
               <Button
                 mode="text"
