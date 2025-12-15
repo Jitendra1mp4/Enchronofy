@@ -101,6 +101,8 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     }
 
     setIsLoading(true);
+  // resolves ui update for loading state not visible
+     await new Promise(resolve => setImmediate(resolve));
 
     try {
       // Create QA pairs for verification
@@ -142,6 +144,9 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
     setIsLoading(true);
 
+      // resolves ui update for loading state not visible
+     await new Promise(resolve => setImmediate(resolve));
+
     try {
       // Attempt to verify recovery key by trying to recover
       CryptoManager.recoverAndReset(vault, recoveryKey, newPassword || "temp");
@@ -180,7 +185,8 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     }
 
     setIsLoading(true);
-
+  // resolves ui update for loading state not visible
+     await new Promise(resolve => setImmediate(resolve));
     try {
       let newVault;
       let newRecoveryKeyResult: string | undefined;
