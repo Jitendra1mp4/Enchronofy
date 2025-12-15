@@ -167,7 +167,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor }]}
-      edges={["left", "right"]}
+      edges={["left", "right","bottom"]}
     >
       <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} />
 
@@ -367,6 +367,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom:80
   },
   header: {
     marginBottom: 24,
