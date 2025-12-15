@@ -3,7 +3,7 @@
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
 import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -12,7 +12,7 @@ import {
   StatusBar,
   StyleSheet,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import {
@@ -26,7 +26,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { base64ToDataUri } from "@/src/services/imageService";
-import { deleteJournal, getJournal } from "@/src/services/unifiedStorageService";
+import {
+  deleteJournal,
+  getJournal,
+} from "@/src/services/unifiedStorageService";
 import { useAppDispatch, useAppSelector } from "@/src/stores/hooks";
 import { deleteJournal as deleteJournalAction } from "@/src/stores/slices/journalsSlice";
 import type { Journal } from "@/src/types";
@@ -67,7 +70,46 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         }
       };
       loadJournal();
-    }, [journalId, encryptionKey, navigation])
+    }, [journalId, encryptionKey, navigation]),
+  );
+
+  const ratiosRef = useRef<Record<string, number>>({});
+  const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
+
+  const cacheRatio = useCallback((uri: string, ratio: number) => {
+    if (ratiosRef.current[uri]) return;
+    ratiosRef.current = { ...ratiosRef.current, [uri]: ratio };
+    setImageRatios(ratiosRef.current);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!journal?.images?.length) return;
+
+      let isActive = true;
+
+      for (const base64 of journal.images) {
+        const uri = base64ToDataUri(base64);
+        if (ratiosRef.current[uri]) continue;
+
+        Image.getSize(
+          uri,
+          (w, h) => {
+            if (!isActive) return;
+            if (!w || !h) return cacheRatio(uri, 4 / 3);
+            cacheRatio(uri, w / h);
+          },
+          () => {
+            if (!isActive) return;
+            cacheRatio(uri, 4 / 3);
+          },
+        );
+      }
+
+      return () => {
+        isActive = false;
+      };
+    }, [journal?.images, cacheRatio]),
   );
 
   const handleDelete = () => {
@@ -93,7 +135,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -103,9 +145,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
   // Text Contrast Fix: Ensure text is readable on colored backgrounds
   // We use a slightly darker version of 'onSurface' for better contrast on pastel cards
-  const contentColor = theme.dark
-    ? theme.colors.onSurface
-    : "#1a1c1e"; // Almost black for light mode readability
+  const contentColor = theme.dark ? theme.colors.onSurface : "#1a1c1e"; // Almost black for light mode readability
 
   if (isLoading) {
     return (
@@ -122,8 +162,13 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   const formattedTime = format(dateObj, "h:mm a");
   const hasTitle = !!journal.title && journal.title.trim().length > 0;
 
+  const isSingleImage = (journal.images?.length ?? 0) === 1;
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['left', 'right']}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor }]}
+      edges={["left", "right"]}
+    >
       <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} />
 
       <ScrollView
@@ -140,7 +185,12 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
                 iconColor={theme.colors.onSurfaceVariant}
                 style={styles.metaIcon}
               />
-              <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+              <Text
+                style={[
+                  styles.metaText,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
                 {formattedDate}
               </Text>
             </View>
@@ -151,7 +201,12 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
                 iconColor={theme.colors.onSurfaceVariant}
                 style={styles.metaIcon}
               />
-              <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+              <Text
+                style={[
+                  styles.metaText,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+              >
                 {formattedTime}
               </Text>
             </View>
@@ -166,7 +221,11 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             </Text>
           ) : (
             <Text
-              style={[styles.title, styles.untitled, { color: theme.colors.onSurfaceVariant }]}
+              style={[
+                styles.title,
+                styles.untitled,
+                { color: theme.colors.onSurfaceVariant },
+              ]}
               variant="displaySmall"
             >
               Untitled Entry
@@ -175,33 +234,57 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         </View>
 
         {/* Image Gallery (Grid Layout) */}
-        {journal.images && journal.images.length > 0 && (
+
+        {journal.images?.length ? (
           <View style={styles.galleryGrid}>
             {journal.images.map((base64, index) => {
               const imageUri = base64ToDataUri(base64);
+              const ratio = imageRatios[imageUri] ?? 4 / 3;
+
+              const wrapperStyle = isSingleImage
+                ? [styles.singleImageWrapper, { aspectRatio: ratio }]
+                : styles.thumbWrapper;
+
               return (
                 <TouchableOpacity
                   key={index}
-                  style={styles.imageWrapper}
+                  style={wrapperStyle}
                   onPress={() => setSelectedImage(imageUri)}
                   activeOpacity={0.9}
                 >
-                  <Image source={{ uri: imageUri }} style={styles.gridImage} />
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={styles.imageFill}
+                    resizeMode={isSingleImage ? "contain" : "cover"}
+                  />
                 </TouchableOpacity>
               );
             })}
           </View>
-        )}
+        ) : null}
 
         {/* Content Body */}
         <View style={styles.body}>
           <Markdown
             style={{
               ...markdownStyles,
-              body: { ...markdownStyles.body, fontSize: 16, lineHeight: 26, color: contentColor },
+              body: {
+                ...markdownStyles.body,
+                fontSize: 16,
+                lineHeight: 26,
+                color: contentColor,
+              },
               paragraph: { marginBottom: 16 },
-              heading1: { ...markdownStyles.heading1, color: contentColor, marginTop: 24 },
-              heading2: { ...markdownStyles.heading2, color: contentColor, marginTop: 20 },
+              heading1: {
+                ...markdownStyles.heading1,
+                color: contentColor,
+                marginTop: 24,
+              },
+              heading2: {
+                ...markdownStyles.heading2,
+                color: contentColor,
+                marginTop: 20,
+              },
             }}
           >
             {journal.text}
@@ -213,7 +296,13 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
       </ScrollView>
 
       {/* Floating Bottom Action Bar */}
-      <Surface style={[styles.bottomBar, { backgroundColor: theme.colors.elevation.level2 }]} elevation={4}>
+      <Surface
+        style={[
+          styles.bottomBar,
+          { backgroundColor: theme.colors.elevation.level2 },
+        ]}
+        elevation={4}
+      >
         <Button
           mode="text"
           textColor={theme.colors.error}
@@ -245,8 +334,11 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
           />
           {selectedImage && (
             <Image
-              source={{ uri: selectedImage }}
-              style={styles.fullImage}
+              source={{ uri: selectedImage! }}
+              style={[
+                styles.fullImage,
+                { aspectRatio: imageRatios[selectedImage!] ?? 4 / 3 },
+              ]}
               resizeMode="contain"
             />
           )}
@@ -312,13 +404,38 @@ const styles = StyleSheet.create({
   body: {
     minHeight: 200,
   },
-  
+
   // Image Grid
   galleryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
     marginBottom: 24,
+  },
+  singleImageWrapper: {
+    width: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+
+  // new: multi-image thumbs stay square (no stretch)
+  thumbWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+
+  // new: shared fill style
+  imageFill: {
+    width: "100%",
+    height: "100%",
   },
   imageWrapper: {
     width: "100%", // Default to full width for single image
@@ -335,6 +452,13 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
 
+
+  modalImageFrame: {
+    width: "100%",
+    height: undefined,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   // Floating Bar
   bottomBar: {
     position: "absolute",
@@ -366,9 +490,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  fullImage: {
-    width: screenWidth,
-    height: "80%",
+    fullImage: {
+    width: "100%", // was screenWidth
+    height: undefined, // was 80
   },
   closeButton: {
     position: "absolute",

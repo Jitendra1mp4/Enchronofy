@@ -22,7 +22,7 @@ import {
   IconButton,
   Text,
   TextInput,
-  useTheme
+  useTheme,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { v4 as uuidv4 } from "uuid";
@@ -65,6 +65,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
   // New state for Markdown Preview toggle
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
 
   // Request camera permissions on mount
   useEffect(() => {
@@ -80,8 +81,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const handlePickImage = async () => {
     try {
-
-      dispatch (setIsImagePickingInProgress(true))
+      dispatch(setIsImagePickingInProgress(true));
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: false,
@@ -89,9 +89,9 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         quality: 1,
         // style: "contain",
       });
-      
-      dispatch (setIsImagePickingInProgress(false))
-      
+
+      dispatch(setIsImagePickingInProgress(false));
+
       if (!result.canceled && result.assets[0]) {
         setIsCompressingImage(true);
         const selectedUri = result.assets[0].uri;
@@ -112,8 +112,16 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   const handleRemoveImage = (index: number) => {
-    setImageBase64List(imageBase64List.filter((_, i) => i !== index));
-    setImageIds(imageIds.filter((_, i) => i !== index));
+    Alert.alert("Confirm", "Are you sure you want to delete image?", [
+      { text: "Cancel" },
+      {
+        text: "Remove Image",
+        onPress: () => {
+          setImageBase64List(imageBase64List.filter((_, i) => i !== index));
+          setImageIds(imageIds.filter((_, i) => i !== index));
+        },
+      },
+    ]);
   };
 
   // This triggers by pressing back from any screen which I am not intended for.
@@ -178,30 +186,30 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   // Find the handleSave function and update it with future date validation
-const handleSave = async (showAlert = false) => {
-  if (isSaving) return false;
+  const handleSave = async (showAlert = false) => {
+    if (isSaving) return false;
 
-  if (!encryptionKey) {
-    if (showAlert)
-      Alert.alert("Oops!", "Encryption key not found. Please login again.");
-    return false;
-  }
+    if (!encryptionKey) {
+      if (showAlert)
+        Alert.alert("Oops!", "Encryption key not found. Please login again.");
+      return false;
+    }
 
-  if (!text.trim()) {
-    if (showAlert)
-      Alert.alert("Validation", "Please write something before saving");
-    return false;
-  }
+    if (!text.trim()) {
+      if (showAlert)
+        Alert.alert("Validation", "Please write something before saving");
+      return false;
+    }
 
-  setIsSaving(true);
+    setIsSaving(true);
 
   try {
     const now = new Date().toISOString();
     let existingJournal: Journal | null = null;
 
-    if (generatedJournalId) {
-      existingJournal = await getJournal(generatedJournalId, encryptionKey);
-    }
+      if (generatedJournalId) {
+        existingJournal = await getJournal(generatedJournalId, encryptionKey);
+      }
 
     let journalDate = now;
     if (existingJournal?.date) {
@@ -228,9 +236,9 @@ const handleSave = async (showAlert = false) => {
         return false;
       }
 
-      const dateObj = new Date(year, month - 1, day, 12);      
-      journalDate = dateObj.toISOString();
-    }
+        const dateObj = new Date(year, month - 1, day, 12);
+        journalDate = dateObj.toISOString();
+      }
 
     const journal: Journal = {
       id: generatedJournalId || uuidv4(),
@@ -251,32 +259,38 @@ const handleSave = async (showAlert = false) => {
       dispatch(addJournal(journal));
     }
 
-    setIsJournalCreated(true);
-    setIsJournalModified(true);
+      setIsJournalCreated(true);
+      setIsJournalModified(true);
 
-    if (!generatedJournalId) setGeneratedJournalId(journal.id);
+      if (!generatedJournalId) setGeneratedJournalId(journal.id);
 
-    if (showAlert) {
-      Alert.alert("Yep!", "🔐Your Journal entry is saved securely!");
+      if (showAlert) {
+        Alert.alert("Yep!", "🔐Your Journal entry is saved securely!");
+      }
+      return true;
+    } catch (error) {
+      console.error("Error saving journal:", error);
+      if (showAlert) {
+        Alert.alert("Oops!", "Failed to save journal entry");
+      }
+      return false;
+    } finally {
+      setIsSaving(false);
     }
-    return true;
-  } catch (error) {
-    console.error("Error saving journal:", error);
-    if (showAlert) {
-      Alert.alert("Oops!", "Failed to save journal entry");
-    }
-    return false;
-  } finally {
-    setIsSaving(false);
-  }
-};
+  };
 
   // Define Markdown styles based on current theme
   const markdownStyles = getMarkdownStyles(theme);
 
-    if (isLoading) {
+  if (isLoading) {
     return (
-      <View style={[styles.container, styles.centerContent, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[
+          styles.container,
+          styles.centerContent,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
@@ -300,20 +314,27 @@ const handleSave = async (showAlert = false) => {
           {/* Top Bar: Date & Actions */}
           <View style={styles.headerRow}>
             {selectedDate ? (
-              <Chip icon="calendar-month-outline" compact style={styles.dateChip} textStyle={styles.dateChipText}>
+              <Chip
+                icon="calendar-month-outline"
+                compact
+                style={styles.dateChip}
+                textStyle={styles.dateChipText}
+              >
                 {selectedDate}
               </Chip>
-            ) : <View />}
+            ) : (
+              <View />
+            )}
 
             <View style={styles.headerRight}>
-               {/* Toggle Preview/Edit */}
+              {/* Toggle Preview/Edit */}
               <View style={styles.toggleContainer}>
-                 <IconButton 
-                    icon={isPreviewMode ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    onPress={() => setIsPreviewMode(!isPreviewMode)}
-                    iconColor={theme.colors.onSurfaceVariant}
-                 />
+                <IconButton
+                  icon={isPreviewMode ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  onPress={() => setIsPreviewMode(!isPreviewMode)}
+                  iconColor={theme.colors.onSurfaceVariant}
+                />
               </View>
 
               {/* <Button
@@ -340,25 +361,27 @@ const handleSave = async (showAlert = false) => {
             underlineColor="transparent"
             activeUnderlineColor="transparent"
             style={[styles.titleInput, { color: theme.colors.onSurface }]}
+            cursorColor={theme.colors.primary}              // make caret pop
+            selectionColor={theme.colors.primary + '55'}    // semi‑transparent selection
             placeholderTextColor={theme.colors.onSurfaceDisabled}
             returnKeyType="next"
             contentStyle={styles.titleContent}
           />
 
           {/* Editor Area - Distraction Free */}
-                   {/* Editor / Preview Area */}
+          {/* Editor / Preview Area */}
           {isPreviewMode ? (
             <View style={styles.previewContainer}>
               <Markdown style={markdownStyles}>
-                {text.trim() ? text : (
-                  "### ✨ Quick Guide\n" +
-                  "Start writing in **Edit** mode using these formats:\n\n" +
-                  "• `Start with # for Big Header`\n" +
-                  "• `Start with ## for Medium Header`\n" +
-                  "• `Start with - for unordered List item`"+
-                  "• `Surround like **Bold Text** for bold text`\n" +
-                  "• `Surround like *Italic Text* for italic`\n" 
-                )}
+                {text.trim()
+                  ? text
+                  : "### ✨ Quick Guide\n" +
+                    "Start writing in **Edit** mode using these formats:\n\n" +
+                    "• `Start with # for Big Header`\n" +
+                    "• `Start with ## for Medium Header`\n" +
+                    "• `Start with - for unordered List item`" +
+                    "• `Surround like **Bold Text** for bold text`\n" +
+                    "• `Surround like *Italic Text* for italic`\n"}
               </Markdown>
             </View>
           ) : (
@@ -373,23 +396,27 @@ const handleSave = async (showAlert = false) => {
               style={[styles.bodyInput, { color: theme.colors.onSurface }]}
               placeholderTextColor={theme.colors.onSurfaceDisabled}
               contentStyle={styles.bodyContent}
+               cursorColor={theme.colors.primary}              // make caret pop
+              selectionColor={theme.colors.primary + '55'}    // semi‑transparent selection
               textAlignVertical="top"
-              autoFocus={!title} 
+              autoFocus={!title}
             />
           )}
-
 
           {/* Attachments Section */}
           {(imageBase64List.length > 0 || isCompressingImage) && (
             <View style={styles.attachmentsArea}>
-               <View style={styles.divider} />
-               <View style={styles.sectionHeader}>
-                <Text variant="labelLarge" style={{ color: theme.colors.outline }}>
+              <View style={styles.divider} />
+              <View style={styles.sectionHeader}>
+                <Text
+                  variant="labelLarge"
+                  style={{ color: theme.colors.outline }}
+                >
                   Attachments
                 </Text>
-                <Button 
-                  mode="text" 
-                  compact 
+                <Button
+                  mode="text"
+                  compact
                   onPress={handlePickImage}
                   disabled={isCompressingImage}
                 >
@@ -397,58 +424,99 @@ const handleSave = async (showAlert = false) => {
                 </Button>
               </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.galleryScroll}
+              >
                 {imageBase64List.map((base64, index) => {
                   const imageUri = base64ToDataUri(base64);
+                  if (!imageRatios[imageUri]) {
+                    Image.getSize(
+                      imageUri,
+                      (w, h) =>
+                        setImageRatios((r) => ({
+                          ...r,
+                          [imageUri]: w / h || 4 / 3,
+                        })),
+                      () =>
+                        setImageRatios((r) => ({ ...r, [imageUri]: 4 / 3 })),
+                    );
+                  }
                   return (
                     <View key={index} style={styles.thumbnailWrapper}>
                       <TouchableOpacity
                         activeOpacity={0.9}
                         onPress={() => setSelectedImage(imageUri)}
                       >
-                        <Image source={{ uri: imageUri }} style={styles.thumbnail} />
+                        <Image
+                          source={{ uri: imageUri }}
+                          style={styles.thumbnail}
+                        />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.removeBtn, { backgroundColor: theme.colors.errorContainer }]}
+                        style={[
+                          styles.removeBtn,
+                          { backgroundColor: theme.colors.errorContainer },
+                        ]}
                         onPress={() => handleRemoveImage(index)}
                       >
-                        <Text style={{ color: theme.colors.onErrorContainer, fontSize: 10, fontWeight:'bold' }}>✕</Text>
+                        <Text
+                          style={{
+                            color: theme.colors.onErrorContainer,
+                            fontSize: 10,
+                            fontWeight: "bold",
+                          }}
+                        >
+                          ✕
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   );
                 })}
                 {isCompressingImage && (
-                   <View style={[styles.thumbnail, styles.centerContent, { backgroundColor: theme.colors.surfaceVariant }]}>
-                      <ActivityIndicator size="small" />
-                   </View>
+                  <View
+                    style={[
+                      styles.thumbnail,
+                      styles.centerContent,
+                      { backgroundColor: theme.colors.surfaceVariant },
+                    ]}
+                  >
+                    <ActivityIndicator size="small" />
+                  </View>
                 )}
               </ScrollView>
             </View>
           )}
-          
+
           {/* Floating Action Button for Images if list is empty, or general convenience */}
           {imageBase64List.length === 0 && !isPreviewMode && (
-             <Button
-                icon="image-plus-outline"
-                mode="text"
-                textColor={theme.colors.secondary}
-                onPress={handlePickImage}
-                style={{ alignSelf: 'flex-start', marginLeft: -8 }}
-             >
-                Add Image
-             </Button>
+            <Button
+              icon="image-plus-outline"
+              mode="text"
+              textColor={theme.colors.secondary}
+              onPress={handlePickImage}
+              style={{ alignSelf: "flex-start", marginLeft: -8 }}
+            >
+              Add Image
+            </Button>
           )}
-
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Fullscreen Image Viewer */}
       {selectedImage && (
         <View style={styles.fullscreenOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedImage(null)} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setSelectedImage(null)}
+          />
           <Image
             source={{ uri: selectedImage }}
-            style={styles.fullscreenImage}
+            style={[
+              styles.fullscreenImage,
+              { aspectRatio: imageRatios[selectedImage] ?? 4 / 3 },
+            ]}
             resizeMode="contain"
           />
           <IconButton
@@ -462,8 +530,6 @@ const handleSave = async (showAlert = false) => {
       )}
     </SafeAreaView>
   );
-
-
 };
 
 const styles = StyleSheet.create({
@@ -480,10 +546,10 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: 80,
     flexGrow: 1,
   },
-  
+
   // Header
   headerRow: {
     flexDirection: "row",
@@ -496,9 +562,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dateChip: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: 'rgba(128,128,128, 0.2)',
+    borderColor: "rgba(128,128,128, 0.2)",
     height: 32,
   },
   dateChipText: {
@@ -514,8 +580,8 @@ const styles = StyleSheet.create({
   },
   saveButtonLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    marginVertical: 4, 
+    fontWeight: "600",
+    marginVertical: 4,
     marginHorizontal: 12,
   },
 
@@ -525,7 +591,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     marginBottom: 8,
     // Negative margin to align text with left edge (Paper adds internal padding)
-    marginLeft: -4, 
+    marginLeft: -4,
   },
   titleContent: {
     fontSize: 26,
@@ -543,7 +609,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     letterSpacing: 0.3,
   },
-  
+
   // Preview
   previewContainer: {
     paddingVertical: 12,
@@ -556,20 +622,20 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(128,128,128, 0.1)',
+    backgroundColor: "rgba(128,128,128, 0.1)",
     marginBottom: 16,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   galleryScroll: {
-    overflow: 'visible',
+    overflow: "visible",
   },
   thumbnailWrapper: {
-    position: 'relative',
+    position: "relative",
     marginRight: 12,
     marginBottom: 4, // shadow room
   },
@@ -577,22 +643,23 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   removeBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: -6,
     right: -6,
     width: 20,
     height: 20,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: 'white',
+    borderColor: "white",
   },
 
   // Fullscreen
+  // styles
   fullscreenOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.95)",
@@ -601,9 +668,11 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   fullscreenImage: {
-    width: "100%",
-    height: "85%",
+    width: "100%", // was 100
+    height: undefined, // was 85
+    // aspectRatio: 1, // default; will be overridden per-image
   },
+
   closeFullscreenBtn: {
     position: "absolute",
     top: 40,
