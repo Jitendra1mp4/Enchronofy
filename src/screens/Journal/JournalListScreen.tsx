@@ -376,7 +376,10 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView
+     style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={["bottom"]}
+     >
       <ExportModal
         visible={showExportModal}
         journalsList={filteredJournals}
@@ -386,7 +389,8 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       />
 
       {/* Header */}
-      <Card style={[styles.headerCard, { borderColor: theme.colors.outlineVariant }]}>
+      <Card style={[styles.headerCard, 
+        { borderColor: theme.colors.outlineVariant }]}>
         <Card.Content>
           <View style={styles.headerContent}>
             <View style={styles.headerText}>

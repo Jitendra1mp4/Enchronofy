@@ -96,7 +96,7 @@ return (
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: 80 }]}
+        contentContainerStyle={[styles.content]}
       >
         {/* Appearance */}
         <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 80,
   },
   section: {
     marginBottom: 24,
