@@ -21,7 +21,7 @@ const initialState: SettingsState = {
   notificationsEnabled: false,
   notificationTime: '20:00',
   autoLockTimeout: APP_CONFIG.LOCK_TIMEOUT_OPTIONS[0].value, // 1 minutes
-  instantLockOnBackground: false,
+  instantLockOnBackground: true,
   isExportInProgress: false,
   isImagePickingInProgress: false,
 };
