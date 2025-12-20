@@ -11,6 +11,8 @@ import {
   TextInput,
   useTheme,
 } from "react-native-paper";
+import { getCryptoProvider } from "@/src/services/unifiedCryptoManager";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import APPCONFIG from "../../config/appConfig";
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
@@ -21,6 +23,7 @@ import {
   setNotificationTime,
   setTheme,
 } from "../../stores/slices/settingsSlice";
+const CryptoManager = getCryptoProvider() ;
 
 const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();

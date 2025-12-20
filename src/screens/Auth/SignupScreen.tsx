@@ -12,7 +12,6 @@ import {
 import { Alert } from '../../utils/alert';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import CryptoManager from '../../services/cryptoManager';
 import {
   clearRecoveryKeyDisplay,
   isFirstLaunch,
@@ -27,8 +26,10 @@ import {
 } from '../../stores/slices/authSlice';
 
 import APP_CONFIG from '@/src/config/appConfig';
+import { getCryptoProvider } from '@/src/services/unifiedCryptoManager';
 import { QAPair } from '../../types/crypto';
 import { PREDEFINED_SECURITY_QUESTIONS } from '../../utils/securityQuestions';
+const CryptoManager = getCryptoProvider() ;
 
 const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -103,6 +104,8 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     await new Promise(resolve => setImmediate(resolve));
 
     try {
+
+
       // Prepare QA pairs
       const qaPairs: QAPair[] = selectedQuestions.map(qId => ({
         questionId: qId,
@@ -197,6 +200,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
           {/* Password section */}
           <Card style={[styles.card, { backgroundColor: theme.colors.surface }]} mode="elevated">
+           
             <Card.Content>
               <Text variant="titleLarge" style={styles.sectionTitle}>Create password</Text>
 

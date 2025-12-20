@@ -17,7 +17,7 @@ const APP_NAME_NORMALIZED_UNDERSCORE = APP_NAME.replace(/\s+/g, '_').toLowerCase
 const APP_NAME_SLUG = APP_NAME.replace(/\s+/g, '-'); // e.g., "D-Journal-HUB"
 const APP_NAME_PACKAGE = 'djournalhub'; // lowercase, no separators for package name
 
-const KDF_ITERATIONS = 30000; // NIST recommended: 100,000+
+const KDF_ITERATIONS = 100000; // NIST recommended: 100,000+
 const SALT_SIZE = 32; // 256 bits
 const DK_SIZE = 32; // 256 bits for AES-256
 const IV_SIZE = 12; // 96 bits for GCM

@@ -7,10 +7,11 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SQLite from 'expo-sqlite';
-import APP_CONFIG from '../config/appConfig';
-import { Journal } from '../types';
-import { EncryptedNote } from '../types/crypto';
-import CryptoManager from './cryptoManager';
+import APP_CONFIG from '../../config/appConfig';
+import { Journal } from '../../types';
+import { EncryptedNote } from '../../types/crypto';
+import { getCryptoProvider } from '../unifiedCryptoManager';
+
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -18,7 +19,7 @@ const DB_NAME = APP_CONFIG.dbName;
 
 // --- Database Initialization ---
 
-
+const CryptoManager = getCryptoProvider()
 export const initDatabase = async () => {
   try {
     // Open the database (creates if doesn't exist)

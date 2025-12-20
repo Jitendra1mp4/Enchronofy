@@ -1,5 +1,6 @@
+import { getCryptoProvider } from "@/src/services/unifiedCryptoManager";
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
   HelperText,
@@ -9,7 +10,6 @@ import {
   useTheme,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
-import CryptoManager from "../../services/cryptoManager";
 import {
   ResetStorage,
   getVault,
@@ -23,6 +23,8 @@ import {
 } from "../../stores/slices/authSlice";
 import type { QAPair } from "../../types/crypto";
 import { Alert } from "../../utils/alert";
+
+const CryptoManager = getCryptoProvider() ;
 
 type RecoveryMethod = "answers" | "recoveryKey";
 type RecoveryStep = "method" | "verify" | "newPassword";
@@ -112,7 +114,9 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
       }));
 
       // Attempt to unlock vault with security answers
-      CryptoManager.unlockWithAnswers(vault, qaPairs);
+      if (Platform.OS === 'web')
+        await CryptoManager.unlockWithAnswers(vault, qaPairs);
+      else CryptoManager.unlockWithAnswers(vault, qaPairs);
 
       // Success! Move to password reset step
       Alert.alert(
