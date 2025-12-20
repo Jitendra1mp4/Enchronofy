@@ -63,7 +63,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // New state for Markdown Preview toggle
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(true);
   const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
 
   // Request camera permissions on mount
@@ -373,6 +373,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
           {/* Editor / Preview Area */}
           {isPreviewMode ? (
             <View style={styles.previewContainer}>
+              <Pressable onPress={()=>setIsPreviewMode(!isPreviewMode)}>
               <Markdown style={markdownStyles}>
                 {text.trim()
                   ? text
@@ -380,10 +381,14 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
                     "Start writing in **Edit** mode using these formats:\n\n" +
                     "• `Start with # for Big Header`\n" +
                     "• `Start with ## for Medium Header`\n" +
-                    "• `Start with - for unordered List item`" +
+                    "• `Start with - for unordered List item`\n" +
                     "• `Surround like **Bold Text** for bold text`\n" +
-                    "• `Surround like *Italic Text* for italic`\n"}
+                    "• `Surround like *Italic Text* for italic`\n"+
+                    "\nTap on eye icon to toggle between preview and edit mode\n"
+                    }
               </Markdown>
+
+              </Pressable>
             </View>
           ) : (
             <TextInput
