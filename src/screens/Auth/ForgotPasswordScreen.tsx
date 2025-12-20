@@ -11,10 +11,9 @@ import {
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  ResetStorage,
   getVault,
   saveRecoveryKeyHash,
-  saveVault,
+  saveVault
 } from "../../services/unifiedStorageService";
 import { useAppDispatch } from "../../stores/hooks";
 import {
@@ -508,7 +507,8 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
             >
               Back to Login
             </Button>
-            <Button
+            
+            {/* <Button
               mode="text"
               onPress={async () => {
                 Alert.alert(
@@ -536,7 +536,8 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
               disabled={isLoading}
             >
               ❌ Destroy Database
-            </Button>
+            </Button> */}
+
           </>
         )}
       </ScrollView>
