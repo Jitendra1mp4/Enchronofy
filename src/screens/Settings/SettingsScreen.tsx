@@ -1,20 +1,38 @@
 import { TimePickerInput } from "@/src/components/common/TimePickerInput";
-import { ResetStorage } from "@/src/services/unifiedStorageService";
-import React, { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Switch, View } from "react-native";
+
+import {
+  cancelAllNotifications,
+  requestNotificationPermissions,
+  scheduleDailyReminder,
+} from "@/src/services/notificationService";
+import { getCryptoProvider } from "@/src/services/unifiedCryptoManager";
+import {
+  getVault,
+  ResetStorage,
+  saveVault,
+} from "@/src/services/unifiedStorageService";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  View,
+} from "react-native";
 import {
   Button,
   Dialog,
   HelperText,
+  List,
   Portal,
   Text,
   TextInput,
   useTheme,
 } from "react-native-paper";
-import { getCryptoProvider } from "@/src/services/unifiedCryptoManager";
 
 import { SafeAreaView } from "react-native-safe-area-context";
-import APPCONFIG from "../../config/appConfig";
+import { APP_CONFIG } from "../../config/appConfig";
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
 import {
   setAutoLockTimeout,
@@ -35,19 +53,75 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
-  const passwordsMatch = newPassword === confirmPassword;
-  const isPasswordValid = newPassword.length >= 8;
+  let passwordsMatch = newPassword === confirmNewPassword;
+  let isPasswordValid = newPassword.length >= 8;
+
+  useEffect(() => {
+    passwordsMatch = newPassword === confirmNewPassword;
+    isPasswordValid = newPassword.length >= 8;
+  }, [newPassword, currentPassword, confirmNewPassword]);
+
+  const encryptionKey = useAppSelector((state) => state.auth.encryptionKey);
+
+  const handleNotificationToggle = async (value: boolean) => {
+    if (Platform.OS === "web") {
+      Alert.alert(
+        "Not Available",
+        "Notifications are not supported on web browsers",
+      );
+      return;
+    }
+
+    if (value) {
+      // Request permissions
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please enable notifications in your device settings",
+        );
+        return;
+      }
+      let [hour, minute] = settings.notificationTime.split(":");
+
+      await scheduleDailyReminder(Number(hour), Number(minute));
+
+      dispatch(setNotificationsEnabled(true));
+      // Alert.alert("Success", "Daily reminder has been set!");
+    } else {
+      // Cancel notifications
+      await cancelAllNotifications();
+      dispatch(setNotificationsEnabled(false));
+    }
+  };
 
   const handleInstantLockToggle = () => {
     dispatch(setInstantLockOnBackground(!settings.instantLockOnBackground));
     if (!settings.instantLockOnBackground) {
       setShowTimeoutOptions(false);
+    }
+  };
+
+  const handleNotificationTimeUpdate = async (time: string) => {
+    const [hour, minute] = time.split(":");
+    // const timeString = `${hour.toString().padStart(2, '0')}:${minute
+    //   .toString()
+    //   .padStart(2, '0')}`;
+
+    // dispatch(setNotificationTime(timeString));
+    dispatch(setNotificationTime(time));
+
+    // Reschedule if notifications are enabled
+    if (settings.notificationsEnabled && Platform.OS !== "web") {
+      await scheduleDailyReminder(Number(hour), Number(minute));
+      Alert.alert("Updated", "Reminder time has been updated!");
     }
   };
 
@@ -58,33 +132,66 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleChangePassword = async () => {
     if (!isPasswordValid) {
-      Alert.alert("Error", "Password must be at least 8 characters");
+      Alert.alert("⚠️ Oops!", "New password must be at least 8 characters");
       return;
     }
     if (!passwordsMatch) {
-      Alert.alert("Error", "Passwords do not match");
+      Alert.alert("⚠️ Oops!", "New passwords do not match");
+      return;
+    }
+
+    if (!encryptionKey) {
+      Alert.alert("⚠️ Oops!", "Not authenticated");
       return;
     }
 
     setIsSavingPassword(true);
     try {
-      // Navigate to ForgotPasswordScreen for password change
-      // This maintains the existing flow without breaking CryptoManager
-      navigation.navigate("ForgotPassword");
-    } catch (error) {
-      Alert.alert("Error", "Failed to change password");
-    } finally {
-      setIsSavingPassword(false);
+      // Get current vault
+      const vaultData = await getVault();
+      if (!vaultData) {
+        Alert.alert("⚠️ Oops!", "Account not found");
+        setIsChangingPassword(false);
+        return;
+      }
+
+      // Verify current password
+      try {
+        CryptoManager.unlockWithPassword(vaultData as any, currentPassword);
+      } catch (error) {
+        Alert.alert("⚠️ Oops!", "Current password is incorrect");
+        throw error;
+      }
+
+      // The encryptionKey we have is already decrypted DK
+      // Use it to rebuild vault with new password
+      const updatedVault = CryptoManager.rebuildVaultWithNewPassword(
+        vaultData as any,
+        encryptionKey,
+        newPassword,
+      );
+
+      // Save updated vault
+      await saveVault(updatedVault);
+
+      // Update encryption key in context (it stays the same)
+      // setEncryptionKey(encryptionKey); // Already set
+
+      Alert.alert("Success", "✅ Password changed successfully!");
       setShowPasswordDialog(false);
-      // Reset form
       setCurrentPassword("");
       setNewPassword("");
-      setConfirmPassword("");
+      setConfirmNewPassword("");
+    } catch (error) {
+      Alert.alert("⚠️ Oops!", "Failed to change password");
+    } finally {
+      setIsChangingPassword(false);
+      setIsSavingPassword(false);
     }
   };
 
   const getTimeoutLabel = () => {
-    const option = APPCONFIG.LOCK_TIMEOUT_OPTIONS.find(
+    const option = APP_CONFIG.LOCK_TIMEOUT_OPTIONS.find(
       (o) => o.value === settings.autoLockTimeout,
     );
     return option
@@ -92,7 +199,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       : `${Math.round(settings.autoLockTimeout / 60000)} Minutes`;
   };
 
-return (
+  return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={["bottom"]}
@@ -102,59 +209,70 @@ return (
         contentContainerStyle={[styles.content]}
       >
         {/* Appearance */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.colors.surface }]}
+        >
           <Text variant="titleLarge" style={styles.sectionTitle}>
             Theme
           </Text>
           <View style={styles.settingRow}>
-            <View style={{flex:1, flexDirection:"column", gap:10}}>
-            <View style={styles.settingInfo}>
-              {/* <Text variant="titleMedium">Theme</Text> */}
-              <Text style={styles.settingDescription}>
-                App appearance mode
-              </Text>
-            </View>
-            <View style={styles.themeButtons}>
-              {(["light", "dark", "auto"] as const).map((opt) => (
-                <Button
-                  key={opt}
-                  mode={settings.theme === opt ? "contained" : "outlined"}
-                  onPress={() => dispatch(setTheme(opt))}
-                  style={styles.themeButton}
-                  compact
-                >
-                  {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                </Button>
-              ))}
-            </View>
+            <View style={{ flex: 1, flexDirection: "column", gap: 10 }}>
+              <View style={styles.settingInfo}>
+                {/* <Text variant="titleMedium">Theme</Text> */}
+                <Text style={styles.settingDescription}>
+                  App appearance mode
+                </Text>
+              </View>
+              <View style={styles.themeButtons}>
+                {(["light", "dark", "auto"] as const).map((opt) => (
+                  <Button
+                    key={opt}
+                    mode={settings.theme === opt ? "contained" : "outlined"}
+                    onPress={() => dispatch(setTheme(opt))}
+                    style={styles.themeButton}
+                    compact
+                  >
+                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                  </Button>
+                ))}
+              </View>
             </View>
           </View>
         </View>
 
         {/* Notifications */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.colors.surface }]}
+        >
           <Text variant="titleLarge" style={styles.sectionTitle}>
             Notifications
           </Text>
 
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text variant="titleMedium">Daily Reminders</Text>
-              <Text style={styles.settingDescription}>
-                Get daily journaling reminders
-              </Text>
-            </View>
-            <Switch
-              value={settings.notificationsEnabled}
-              onValueChange={(value) => {dispatch(setNotificationsEnabled(value))}}
+          {Platform.OS === "web" ? (
+            <List.Item
+              title="Not Available on Web"
+              description="Notifications only work on mobile devices"
+              left={(props) => <List.Icon {...props} icon="alert-circle" />}
             />
-          </View>
-
-          {settings.notificationsEnabled && (
+          ) : (
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text variant="titleMedium">Daily Reminders</Text>
+                <Text style={styles.settingDescription}>
+                  Get daily reminders to Journal...
+                </Text>
+              </View>
+              <Switch
+                value={settings.notificationsEnabled}
+                onValueChange={(value) => handleNotificationToggle(value)}
+              />
+            </View>
+          )}
+          {(Platform.OS !== "web" && settings.notificationsEnabled) && (
             <View style={styles.timePickerContainer}>
               <TimePickerInput
                 value={settings.notificationTime}
-                onChangeTime={(time) => dispatch(setNotificationTime(time))}
+                onChangeTime={(time) => handleNotificationTimeUpdate(time)}
                 label="Reminder Time"
               />
               <HelperText type="info">
@@ -163,9 +281,10 @@ return (
             </View>
           )}
         </View>
-
         {/* Security */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.colors.surface }]}
+        >
           <Text variant="titleLarge" style={styles.sectionTitle}>
             Security
           </Text>
@@ -249,13 +368,15 @@ return (
         </View>
 
         {/* About */}
-        <View style={[styles.section, { backgroundColor: theme.colors.surface }]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.colors.surface }]}
+        >
           <Text variant="titleLarge" style={styles.sectionTitle}>
             About
           </Text>
           <View style={styles.aboutCard}>
             <Text variant="titleMedium" style={{ marginBottom: 8 }}>
-              {APPCONFIG.displayName}
+              {APP_CONFIG.displayName}
             </Text>
             <Text style={styles.aboutText}>Secure. Private. Yours.</Text>
             <Text style={[styles.aboutText, { opacity: 0.7 }]}>
@@ -274,7 +395,7 @@ return (
         >
           <Dialog.Title>Select Auto-Lock Timeout</Dialog.Title>
           <Dialog.Content style={{ gap: 8 }}>
-            {APPCONFIG.LOCK_TIMEOUT_OPTIONS.map((option) => (
+            {APP_CONFIG.LOCK_TIMEOUT_OPTIONS.map((option) => (
               <Button
                 key={option.value}
                 mode={
@@ -289,9 +410,7 @@ return (
             ))}
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowTimeoutOptions(false)}>
-              Cancel
-            </Button>
+            <Button onPress={() => setShowTimeoutOptions(false)}>Cancel</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -305,14 +424,15 @@ return (
         showCurrentPassword,
         setShowCurrentPassword,
         newPassword,
+        confirmNewPassword,
         setNewPassword,
         showNewPassword,
         isPasswordValid,
         setShowNewPassword,
-        confirmPassword,
-        setConfirmPassword,
+        setConfirmNewPassword,
         showConfirmPassword,
         passwordsMatch,
+        isChangingPassword,
         setShowConfirmPassword,
         handleChangePassword,
         isSavingPassword,
@@ -358,7 +478,7 @@ const styles = StyleSheet.create({
   },
   themeButtons: {
     flexDirection: "row",
-    justifyContent:"space-between",
+    justifyContent: "space-between",
     gap: 8,
   },
   themeButton: {
@@ -394,7 +514,6 @@ const styles = StyleSheet.create({
 
 export default SettingsScreen;
 
-
 function ResetPassword(
   showPasswordDialog: boolean,
   setShowPasswordDialog: React.Dispatch<React.SetStateAction<boolean>>,
@@ -403,14 +522,15 @@ function ResetPassword(
   showCurrentPassword: boolean,
   setShowCurrentPassword: React.Dispatch<React.SetStateAction<boolean>>,
   newPassword: string,
+  confirmNewPassword: string,
   setNewPassword: React.Dispatch<React.SetStateAction<string>>,
   showNewPassword: boolean,
   isPasswordValid: boolean,
   setShowNewPassword: React.Dispatch<React.SetStateAction<boolean>>,
-  confirmPassword: string,
-  setConfirmPassword: React.Dispatch<React.SetStateAction<string>>,
+  setConfirmNewPassword: React.Dispatch<React.SetStateAction<string>>,
   showConfirmPassword: boolean,
   passwordsMatch: boolean,
+  isChangingPassword: boolean,
   setShowConfirmPassword: React.Dispatch<React.SetStateAction<boolean>>,
   handleChangePassword: () => Promise<void>,
   isSavingPassword: boolean,
@@ -461,12 +581,12 @@ function ResetPassword(
 
           <TextInput
             label="Confirm New Password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            value={confirmNewPassword}
+            onChangeText={setConfirmNewPassword}
             secureTextEntry={!showConfirmPassword}
             mode="outlined"
             style={styles.dialogInput}
-            error={!passwordsMatch && confirmPassword.length > 0}
+            error={!passwordsMatch && confirmNewPassword.length > 0}
             right={
               <TextInput.Icon
                 icon={showConfirmPassword ? "eye-off" : "eye"}
@@ -474,17 +594,32 @@ function ResetPassword(
               />
             }
           />
-          {!passwordsMatch && confirmPassword.length > 0 && (
+          {!passwordsMatch && confirmNewPassword.length > 0 && (
             <HelperText type="error">Passwords do not match</HelperText>
           )}
         </Dialog.Content>
         <Dialog.Actions>
-          <Button onPress={() => setShowPasswordDialog(false)}>Cancel</Button>
+          <Button
+            onPress={() => {
+              setShowPasswordDialog(false);
+              setCurrentPassword("");
+              setNewPassword("");
+              setConfirmNewPassword("");
+            }}
+          >
+            Cancel
+          </Button>
+
           <Button
             mode="contained"
             onPress={handleChangePassword}
-            loading={isSavingPassword}
-            disabled={!isPasswordValid || !passwordsMatch || isSavingPassword}
+            loading={isSavingPassword || isChangingPassword}
+            disabled={
+              !isPasswordValid ||
+              isChangingPassword ||
+              !passwordsMatch ||
+              isSavingPassword
+            }
           >
             Change Password
           </Button>
