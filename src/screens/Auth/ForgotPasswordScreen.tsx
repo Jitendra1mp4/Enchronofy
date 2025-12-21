@@ -1,4 +1,5 @@
 import { getCryptoProvider } from "@/src/services/unifiedCryptoManager";
+import { resolveImmediately } from "@/src/utils/immediatePromiseResolver";
 import React, { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import {
@@ -103,7 +104,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
     setIsLoading(true);
   // resolves ui update for loading state not visible
-     await new Promise(resolve => setImmediate(resolve));
+     await new Promise(resolve => resolveImmediately(resolve));
 
     try {
       // Create QA pairs for verification
@@ -148,7 +149,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     setIsLoading(true);
 
       // resolves ui update for loading state not visible
-     await new Promise(resolve => setImmediate(resolve));
+     await new Promise(resolve => resolveImmediately(resolve));
 
     try {
       // Attempt to verify recovery key by trying to recover
@@ -188,8 +189,9 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
     }
 
     setIsLoading(true);
-  // resolves ui update for loading state not visible
-     await new Promise(resolve => setImmediate(resolve));
+   // Yield control to let React paint the loading state FIRST
+      await new Promise(resolve => resolveImmediately(resolve));
+
     try {
       let newVault;
       let newRecoveryKeyResult: string | undefined;

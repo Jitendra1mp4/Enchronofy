@@ -34,6 +34,7 @@ import {
 import APP_CONFIG from "@/src/config/appConfig";
 import { requestNotificationPermissions } from "@/src/services/notificationService";
 import { getCryptoProvider } from "@/src/services/unifiedCryptoManager";
+import { resolveImmediately } from "@/src/utils/immediatePromiseResolver";
 import { QAPair } from "../../types/crypto";
 import { PREDEFINED_SECURITY_QUESTIONS } from "../../utils/securityQuestions";
 const CryptoManager = getCryptoProvider();
@@ -120,7 +121,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setIsLoading(true);
 
     // Yield control to let React paint the loading state FIRST
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise(resolve => resolveImmediately(resolve));
 
     try {
       // Prepare QA pairs

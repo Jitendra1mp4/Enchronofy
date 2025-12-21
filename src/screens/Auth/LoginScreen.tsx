@@ -1,5 +1,6 @@
 import APP_CONFIG from "@/src/config/appConfig";
 import { getCryptoProvider } from "@/src/services/unifiedCryptoManager";
+import { resolveImmediately } from "@/src/utils/immediatePromiseResolver";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
@@ -85,8 +86,8 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
 
     setIsLoading(true);
-    // resolves ui update for loading state not visible
-     await new Promise(resolve => setImmediate(resolve));
+     // Yield control to let React paint the loading state FIRST
+    await new Promise(resolve => resolveImmediately(resolve));
     try {
       console.log("🔓 Unlocking...");
 
