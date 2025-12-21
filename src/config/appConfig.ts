@@ -39,9 +39,9 @@ export const APP_CONFIG = {
   packageName: `pro.corelogik.${APP_NAME_PACKAGE}`, // Android package name
   scheme: APP_NAME_PACKAGE, // Deep linking scheme
 
-  // Database configuration
-  dbName: `${APP_NAME_NORMALIZED_UNDERSCORE}.db`, // e.g., "d_journal_hub.db"
-
+  // we want to make db name independent of app name
+  dbName: `pro.corelogik.journal_app.db`, 
+  
   // Storage key prefix - used for AsyncStorage and other storage mechanisms
   storageKeyPrefix: `@${APP_NAME_NORMALIZED_UNDERSCORE}`, // e.g., "@d_journal_hub"
 
