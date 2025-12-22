@@ -11,11 +11,8 @@ import {
   useTheme,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  getVault,
-  saveRecoveryKeyHash,
-  saveVault
-} from "../../services/unifiedStorageService";
+
+import { getVaultStorageProvider } from "@/src/services/unifiedStorageService";
 import { useAppDispatch } from "../../stores/hooks";
 import {
   setAuthenticated,
@@ -25,9 +22,12 @@ import type { QAPair } from "../../types/crypto";
 import { Alert } from "../../utils/alert";
 
 const CryptoManager = getCryptoProvider() ;
+const VaultStorageProvider = getVaultStorageProvider()
 
 type RecoveryMethod = "answers" | "recoveryKey";
 type RecoveryStep = "method" | "verify" | "newPassword";
+
+
 
 const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
   navigation,
@@ -67,7 +67,7 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
 
   const loadVault = async () => {
     try {
-      const loadedVault = await getVault();
+      const loadedVault = await  VaultStorageProvider.getVault();
       if (!loadedVault) {
         Alert.alert(
           "No Account Found",
@@ -227,11 +227,11 @@ const ForgotPasswordScreen: React.FC<{ navigation: any }> = ({
       }
 
       // Save updated vault
-      await saveVault(newVault);
+      await  VaultStorageProvider.saveVault(newVault);
 
       // If recovery key was reset, save and display it
       if (newRecoveryKeyResult) {
-        await saveRecoveryKeyHash(newRecoveryKeyResult);
+        await  VaultStorageProvider.saveRecoveryKeyHash(newRecoveryKeyResult);
 
         Alert.alert(
           "Password Reset Successfully!",

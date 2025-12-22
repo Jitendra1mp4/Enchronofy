@@ -16,7 +16,7 @@ import { Card, FAB, IconButton, Searchbar, Text, useTheme } from "react-native-p
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { exportAsJSON, exportAsMarkdown, exportAsPDF } from "@/src/services/exportService";
-import { deleteJournal, listJournals } from "@/src/services/unifiedStorageService";
+import { getVaultStorageProvider } from "@/src/services/unifiedStorageService";
 import { useAppDispatch, useAppSelector } from "@/src/stores/hooks";
 import {
   deleteJournal as deleteJournalAction,
@@ -25,6 +25,8 @@ import {
 } from "@/src/stores/slices/journalsSlice";
 import type { Journal } from "@/src/types";
 import { Alert } from "@/src/utils/alert";
+
+const VaultStorageProvider = getVaultStorageProvider()
 
 const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -79,7 +81,7 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
 
     dispatch(setLoading(true));
     try {
-      const loadedJournals = await listJournals(encryptionKey);
+      const loadedJournals = await VaultStorageProvider.listJournals(encryptionKey);
       dispatch(setJournals(loadedJournals));
     } catch (error) {
       console.error("❌ Error loading journals:", error);
@@ -171,7 +173,7 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
 
             setIsDeleting(true);
             try {
-              await deleteJournal(journalId);
+              await VaultStorageProvider.deleteJournal(journalId);
               dispatch(deleteJournalAction(journalId));
               Alert.alert("Deleted", "Journal entry removed successfully");
             } catch (error) {

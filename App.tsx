@@ -13,7 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider } from 'react-redux';
 import { ThemeProvider } from './src/components/common/ThemeProvider';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { getSettings } from './src/services/unifiedStorageService';
+import { getPreferenceStorageProvider, getVaultStorageProvider } from './src/services/unifiedStorageService';
 import { store } from './src/stores';
 import {
   useAppDispatch,
@@ -24,6 +24,11 @@ import {
 } from './src/stores/slices/authSlice';
 import { setIsExportInProgress, setIsImagePickingInProgress, updateSettings } from './src/stores/slices/settingsSlice';
 
+
+const PreferenceStorageProvider = getPreferenceStorageProvider()
+const VaultStorageProvider = getVaultStorageProvider()
+
+
 function AppContent() {
   const appState = useRef(AppState.currentState);
   const backgroundTimeRef = useRef<number | null>(null);
@@ -32,18 +37,16 @@ function AppContent() {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const settings = useAppSelector((state) => state.settings);
   const dispatch = useAppDispatch();
-
  const [storageReady, setStorageReady] = useState(false); // 🔑 NEW
-  
+ 
   useEffect(() => {
     const initStorage = async () => {
       try {
-        const { initializeStorage } = await import('./src/services/unifiedStorageService');
-        await initializeStorage();
+        await VaultStorageProvider.initializeStorage();
         console.log('✅ Storage initialized - App ready');
         
         // Load preferences from separate storage
-        const savedSettings = await getSettings();
+        const savedSettings = await PreferenceStorageProvider.getSettings();
         if (savedSettings) {
           console.log('✅ Loaded preferences:', savedSettings);
           dispatch(updateSettings(savedSettings));

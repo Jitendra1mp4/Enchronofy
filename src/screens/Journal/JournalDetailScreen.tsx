@@ -26,16 +26,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { base64ToDataUri } from "@/src/services/imageService";
-import {
-  deleteJournal,
-  getJournal,
-} from "@/src/services/unifiedStorageService";
+
+import { getVaultStorageProvider } from "@/src/services/unifiedStorageService";
 import { useAppDispatch, useAppSelector } from "@/src/stores/hooks";
 import { deleteJournal as deleteJournalAction } from "@/src/stores/slices/journalsSlice";
 import type { Journal } from "@/src/types";
 import { Alert } from "@/src/utils/alert";
 
 const { width: screenWidth } = Dimensions.get("window");
+
+const VaultStorageProvider = getVaultStorageProvider()
+
 
 const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -59,7 +60,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         if (!encryptionKey) return;
         setIsLoading(true);
         try {
-          const loadedJournal = await getJournal(journalId, encryptionKey);
+          const loadedJournal = await VaultStorageProvider.getJournal(journalId, encryptionKey);
           setJournal(loadedJournal);
         } catch (error) {
           console.error("❌ Error loading journal detail:", error);
@@ -125,7 +126,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             if (!encryptionKey) return;
             setIsDeleting(true);
             try {
-              await deleteJournal(journalId);
+              await VaultStorageProvider.deleteJournal(journalId);
               dispatch(deleteJournalAction(journalId));
               navigation.goBack();
             } catch (error) {
