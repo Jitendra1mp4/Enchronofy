@@ -115,8 +115,8 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const handleDelete = () => {
     Alert.alert(
-      "Delete Entry",
-      "Are you sure you want to delete this journal? This cannot be undone.",
+      "Delete?",
+      "Are you sure you want to delete this memory? This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -131,7 +131,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               navigation.goBack();
             } catch (error) {
               console.error("❌ Delete error:", error);
-              Alert.alert("Error", "Failed to delete journal");
+              Alert.alert("Oops!", "Failed to delete journal");
               setIsDeleting(false);
             }
           },
