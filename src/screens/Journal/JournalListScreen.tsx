@@ -161,8 +161,8 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
 
   const handleDeleteJournal = async (journalId: string) => {
     Alert.alert(
-      "Delete Journal",
-      "This action cannot be undone. Are you sure?",
+      "Delete?",
+      "Are you sure you want to delete this memory? This cannot be undone.?",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -173,12 +173,14 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
 
             setIsDeleting(true);
             try {
-              await VaultStorageProvider.deleteJournal(journalId);
+              await VaultStorageProvider.deleteJournal(
+                journalId,
+                encryptionKey,
+              );
               dispatch(deleteJournalAction(journalId));
-              Alert.alert("Deleted", "Journal entry removed successfully");
             } catch (error) {
               console.error("❌ Delete error:", error);
-              Alert.alert("Error", "Failed to delete journal");
+              Alert.alert("Oops!", "Failed to delete journal");
             } finally {
               setIsDeleting(false);
             }
@@ -248,7 +250,9 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
           <View style={styles.cardRow}>
             {/* Left date banner */}
             <View style={[styles.dateBanner, { backgroundColor: bannerBg }]}>
-              <Text style={[styles.bannerDay, { color: theme.colors.onSurface }]}>
+              <Text
+                style={[styles.bannerDay, { color: theme.colors.onSurface }]}
+              >
                 {day}
               </Text>
               <Text
@@ -290,21 +294,9 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                     Untitled
                   </Text>
                 )}
-
-                <IconButton
-                  icon="pencil-outline"
-                  size={20}
-                  mode="contained-tonal"
-                  iconColor={theme.colors.primary}
-                  style={styles.editButton}
-                  onPress={(e: any) => {
-                    e?.stopPropagation?.();
-                    navigation.navigate("JournalEditor", { journalId: item.id });
-                  }}
-                />
               </View>
 
-                            <View style={styles.preview}>
+              <View style={styles.preview}>
                 <Markdown
                   style={{
                     ...markdownStyles,
@@ -323,21 +315,21 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                     heading1: {
                       fontSize: 14,
                       lineHeight: 20,
-                      fontWeight: '700',
+                      fontWeight: "700",
                       marginBottom: 4,
                       marginTop: 0,
                     },
                     heading2: {
                       fontSize: 14,
                       lineHeight: 20,
-                      fontWeight: '700',
+                      fontWeight: "700",
                       marginBottom: 4,
                       marginTop: 0,
                     },
                     heading3: {
                       fontSize: 14,
                       lineHeight: 20,
-                      fontWeight: '700',
+                      fontWeight: "700",
                       marginBottom: 4,
                       marginTop: 0,
                     },
@@ -351,22 +343,54 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                 </Markdown>
               </View>
 
-
               <View style={styles.metaRow}>
                 {hasImages && (
-                  <View style={[styles.metaPill, { borderColor: theme.colors.outlineVariant }]}>
+                  <View
+                    style={[
+                      styles.metaPill,
+                      { borderColor: theme.colors.outlineVariant },
+                    ]}
+                  >
                     <IconButton
                       icon="image-outline"
                       size={14}
                       iconColor={theme.colors.onSurfaceVariant}
                       style={styles.metaIcon}
                     />
-                    <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                    <Text
+                      style={[
+                        styles.metaText,
+                        { color: theme.colors.onSurfaceVariant },
+                      ]}
+                    >
                       {item.images!.length}
                     </Text>
                   </View>
                 )}
 
+                <View style={styles.actionButtonContainer}>
+                  <IconButton
+                    icon="trash-can-outline"
+                    size={20}
+                    mode="contained-tonal"
+                    iconColor={theme.colors.error}
+                    style={styles.editButton}
+                    onPress={() => handleDeleteJournal(item.id)}
+                  />
+                  <IconButton
+                    icon="pencil-outline"
+                    size={20}
+                    mode="contained-tonal"
+                    iconColor={theme.colors.primary}
+                    style={styles.editButton}
+                    onPress={(e: any) => {
+                      e?.stopPropagation?.();
+                      navigation.navigate("JournalEditor", {
+                        journalId: item.id,
+                      });
+                    }}
+                  />
+                </View>
                 {/* keep delete functionality available (not wired to UI previously) */}
                 {/* if you want, we can add a long-press or menu for delete without cluttering */}
               </View>
@@ -379,9 +403,9 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
 
   return (
     <SafeAreaView
-     style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={["bottom"]}
-     >
+    >
       <ExportModal
         visible={showExportModal}
         journalsList={filteredJournals}
@@ -391,8 +415,12 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       />
 
       {/* Header */}
-      <Card style={[styles.headerCard, 
-        { borderColor: theme.colors.outlineVariant }]}>
+      <Card
+        style={[
+          styles.headerCard,
+          { borderColor: theme.colors.outlineVariant },
+        ]}
+      >
         <Card.Content>
           <View style={styles.headerContent}>
             <View style={styles.headerText}>
@@ -400,7 +428,8 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                 {selectedDateFormatted || "📖 All My Journals"}
               </Text>
               <Text variant="bodyMedium" style={styles.subtitle}>
-                {filteredJournals.length} {filteredJournals.length === 1 ? "entry" : "entries"}
+                {filteredJournals.length}{" "}
+                {filteredJournals.length === 1 ? "entry" : "entries"}
               </Text>
             </View>
 
@@ -408,7 +437,9 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
               icon="export-variant"
               mode="contained-tonal"
               onPress={() => setShowExportModal(true)}
-              disabled={filteredJournals.length === 0 || isDeleting || isExporting}
+              disabled={
+                filteredJournals.length === 0 || isDeleting || isExporting
+              }
             />
           </View>
         </Card.Content>
@@ -442,7 +473,9 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       ) : (
         <FlatList
           data={filteredJournals}
-          renderItem={({ item, index }) => <JournalCard item={item} index={index} />}
+          renderItem={({ item, index }) => (
+            <JournalCard item={item} index={index} />
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -562,6 +595,12 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 
+  actionButtonContainer: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 12,
+  },
   editButton: { margin: 0 },
 
   preview: {
