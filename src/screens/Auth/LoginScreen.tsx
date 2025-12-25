@@ -98,7 +98,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         return;
       }
 
-      const unlockResult: any = CryptoManager.unlockWithPassword(
+      const unlockResult: any = await CryptoManager.unlockWithPassword(
         vaultToUse as any,
         password,
       );

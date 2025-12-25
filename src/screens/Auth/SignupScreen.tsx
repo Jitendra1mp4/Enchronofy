@@ -138,7 +138,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // - Master Data Key (DK)
       // - Three key wraps (password, security answers, recovery key)
       // - Three salts for key derivation
-      const { vault, recoveryKey, dk } = CryptoManager.initializeVault(
+      const { vault, recoveryKey, dk } = await CryptoManager.initializeVault(
         password,
         qaPairs,
       );
@@ -157,7 +157,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       // 7. Store the DK in context (user is now logged in with this key)
       // Decrypt DK using password for immediate access
-      // const { dk } = CryptoManager.unlockWithPassword(vault, password);
+      // const { dk } = await CryptoManager.unlockWithPassword(vault, password);
       dispatch(setEncryptionKey(dk));
 
       // 8. Show recovery key to user and ask them to save it

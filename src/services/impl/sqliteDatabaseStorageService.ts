@@ -220,7 +220,7 @@ class SQLiteStorageProvider implements VaultStorageProvider {
       if (!SQLiteStorageProvider.db) throw new Error("Database not initialized");
 
       // Encrypt the note using CryptoManager
-      const encryptedNote = this.CryptoManager.encryptNote(dk, journal.text, {
+      const encryptedNote = await this.CryptoManager.encryptNote(dk, journal.text, {
         id: journal.id,
         date: journal.date,
         title: journal.title,
@@ -296,7 +296,7 @@ class SQLiteStorageProvider implements VaultStorageProvider {
       };
 
       // Decrypt the content
-      const decryptedText = this.CryptoManager.decryptNote(dk, encryptedNoteObject);
+      const decryptedText = await this.CryptoManager.decryptNote(dk, encryptedNoteObject);
 
       // Parse images if stored as JSON
       let images: string[] = [];
@@ -365,7 +365,7 @@ class SQLiteStorageProvider implements VaultStorageProvider {
           };
 
           // Decrypt content
-          const decryptedText = this.CryptoManager.decryptNote(dk, noteObject);
+          const decryptedText = await this.CryptoManager.decryptNote(dk, noteObject);
 
           // Parse images
           let images: string[] = [];
@@ -436,7 +436,7 @@ class SQLiteStorageProvider implements VaultStorageProvider {
 
       // Re-encrypt each journal with new DK
       for (const journal of journals) {
-        const encryptedNote = this.CryptoManager.encryptNote(newDk, journal.text, {
+        const encryptedNote = await this.CryptoManager.encryptNote(newDk, journal.text, {
           id: journal.id,
           date: journal.date,
           title: journal.title,

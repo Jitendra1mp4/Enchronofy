@@ -150,7 +150,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       // Verify current password
       try {
-        CryptoManager.unlockWithPassword(vaultData as any, currentPassword);
+        await CryptoManager.unlockWithPassword(vaultData as any, currentPassword);
       } catch (error) {
         Alert.alert("⚠️ Oops!", "Current password is incorrect");
         throw error;
@@ -158,7 +158,7 @@ const SettingsScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
       // The encryptionKey we have is already decrypted DK
       // Use it to rebuild vault with new password
-      const updatedVault = CryptoManager.rebuildVaultWithNewPassword(
+      const updatedVault = await CryptoManager.rebuildVaultWithNewPassword(
         vaultData as any,
         encryptionKey,
         newPassword,

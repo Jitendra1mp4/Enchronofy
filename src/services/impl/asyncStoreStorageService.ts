@@ -1,208 +1,200 @@
-import APP_CONFIG from "@/src/config/appConfig";
-import { Journal, SecurityQuestion } from "@/src/types";
-import { Vault } from "@/src/types/crypto";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { VaultStorageProvider } from "../unifiedStorageService";
-import CryptoJSCryptoManager from "./cryptoJSCryptoManager";
+
+import APP_CONFIG from '@/src/config/appConfig';
+import { Journal, SecurityQuestion } from '@/src/types';
+import { Vault } from '@/src/types/crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCryptoProvider } from '../unifiedCryptoManager';
+import { VaultStorageProvider } from '../unifiedStorageService';
 
 class AsyncStoreStorageProvider implements VaultStorageProvider {
   static obj: AsyncStoreStorageProvider | null = null;
 
-   cryptoJsManger:CryptoJSCryptoManager ;
+  private constructor() {}
 
-  private constructor() {
-    this.cryptoJsManger=CryptoJSCryptoManager.getObject()
-  }
- 
-  // Singleton object
   static getObject(): AsyncStoreStorageProvider {
-    if (AsyncStoreStorageProvider.obj == null) {
+    if (AsyncStoreStorageProvider.obj === null) {
       AsyncStoreStorageProvider.obj = new AsyncStoreStorageProvider();
     }
     return AsyncStoreStorageProvider.obj;
   }
 
+  // ==================== Helper Methods ====================
+
   /**
-   * Check if this is the first app launch
+   * Encrypt JSON data using unified crypto manager
+   * @param keyHex - Encryption key (hex string)
+   * @param data - Data to encrypt
+   * @returns Promise<string> - Encrypted data (hex)
    */
-  isFirstLaunch = async (): Promise<boolean> => {
+  private async encryptJSON(keyHex: string, data: any): Promise<string> {
     try {
-      const value = await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.FIRST_LAUNCH,
+      const cryptoManager = getCryptoProvider();
+      const jsonString = JSON.stringify(data);
+      return await cryptoManager.encryptData(keyHex, jsonString);
+    } catch (error) {
+      throw new Error(
+        `Failed to encrypt data: ${error instanceof Error ? error.message : String(error)}`
       );
+    }
+  }
+
+  /**
+   * Decrypt JSON data using unified crypto manager
+   * @param keyHex - Encryption key (hex string)
+   * @param cipherText - Encrypted data (hex)
+   * @returns Promise<any> - Decrypted data
+   */
+  private async decryptJSON(keyHex: string, cipherText: string): Promise<any> {
+    try {
+      const cryptoManager = getCryptoProvider();
+      const jsonString = await cryptoManager.decryptData(keyHex, cipherText);
+      return JSON.parse(jsonString);
+    } catch (error) {
+      throw new Error(
+        `Failed to decrypt data: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  // ==================== Storage Methods ====================
+
+  async isFirstLaunch(): Promise<boolean> {
+    try {
+      const value = await AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.FIRST_LAUNCH);
       return value === null;
     } catch (error) {
-      console.error("Error checking first launch:", error);
+      console.error('Error checking first launch:', error);
       return false;
     }
-  };
+  }
 
-
-  initializeStorage = async () => {
-    setTimeout(() => {      
-      console.log('✅ [Web] AsyncStorage ready');
+  async initializeStorage(): Promise<void> {
+    setTimeout(() => {
+      console.log('[Web] AsyncStorage ready');
     }, 0);
   }
 
-
-   getJournalCount = async () => {
-    // For web, we'll need to count from actual storage
+  async getJournalCount(): Promise<number> {
+    // For web, we'd need to count from actual storage
     // This is a limitation - we'd need to refactor to pass key
     return 0;
   }
 
-  /**
-   * Mark app as launched
-   */
-  markAsLaunched = async (): Promise<void> => {
+  async markAsLaunched(): Promise<void> {
     try {
-      await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.FIRST_LAUNCH, "true");
+      await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.FIRST_LAUNCH, 'true');
     } catch (error) {
-      console.error("Error marking as launched:", error);
+      console.error('Error marking as launched:', error);
     }
-  };
+  }
 
-  /**
-   * Save the salt used for key derivation
-   */
-  saveSalt = async (saltKey: string, salt: string): Promise<void> => {
+  // ==================== Salt Management ====================
+
+  async saveSalt(saltKey: string, salt: string): Promise<void> {
     try {
       await AsyncStorage.setItem(saltKey, salt);
     } catch (error) {
-      console.error("Error saving salt:", error);
-      throw new Error("Failed to save encryption salt");
+      console.error('Error saving salt:', error);
+      throw new Error('Failed to save encryption salt');
     }
-  };
+  }
 
-  /**
-   * Get the stored salt
-   */
-  getSalt = async (saltKey: string): Promise<string | null> => {
+  async getSalt(saltKey: string): Promise<string | null> {
     try {
       return await AsyncStorage.getItem(saltKey);
     } catch (error) {
-      console.error("Error getting salt:", error);
+      console.error('Error getting salt:', error);
       return null;
     }
-  };
+  }
 
-  /**
-   * Save security questions (encrypted)
-   */
-  saveSecurityQuestions = async (
+  // ==================== Security Questions ====================
+
+  async saveSecurityQuestions(
     questions: SecurityQuestion[],
-    key: string,
-  ): Promise<void> => {
+    key: string
+  ): Promise<void> {
     try {
-      const encrypted = this.cryptoJsManger.encryptJSON(key, questions);
-      await AsyncStorage.setItem(
-        APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS,
-        encrypted,
-      );
+      const encrypted = await this.encryptJSON(key, questions);
+      await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS, encrypted);
     } catch (error) {
-      console.error("Error saving security questions:", error);
-      throw new Error("Failed to save security questions");
+      console.error('Error saving security questions:', error);
+      throw new Error('Failed to save security questions');
     }
-  };
+  }
 
-  /**
-   * Get security questions (decrypted)
-   */
-  getSecurityQuestions = async (
-    key: string,
-  ): Promise<SecurityQuestion[] | null> => {
+  async getSecurityQuestions(key: string): Promise<SecurityQuestion[] | null> {
     try {
-      const encrypted = await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS,
-      );
+      const encrypted = await AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS);
       if (!encrypted) return null;
-
-      return this.cryptoJsManger.decryptJSON(key, encrypted) as SecurityQuestion[];
+      return await this.decryptJSON(key, encrypted);
     } catch (error) {
-      console.error("Error getting security questions:", error);
+      console.error('Error getting security questions:', error);
       return null;
     }
-  };
+  }
 
-  /**
-   * Save security answer hashes (unencrypted for recovery)
-   */
-  saveSecurityAnswerHashes = async (
-    answerHashes: Array<{ questionId: string; answerHash: string }>,
-  ): Promise<void> => {
+  // ==================== Security Answer Hashes ====================
+
+  async saveSecurityAnswerHashes(
+    answerHashes: Array<{ questionId: string; answerHash: string }>
+  ): Promise<void> {
     try {
       await AsyncStorage.setItem(
         APP_CONFIG.STORAGE_KEYS.SECURITY_ANSWERS_HASH,
-        JSON.stringify(answerHashes),
+        JSON.stringify(answerHashes)
       );
     } catch (error) {
-      console.error("Error saving answer hashes:", error);
-      throw new Error("Failed to save security answer hashes");
+      console.error('Error saving answer hashes:', error);
+      throw new Error('Failed to save security answer hashes');
     }
-  };
+  }
 
-  /**
-   * Get security answer hashes (for verification during recovery)
-   */
-  getSecurityAnswerHashes = async (): Promise<Array<{
-    questionId: string;
-    answerHash: string;
-  }> | null> => {
+  async getSecurityAnswerHashes(): Promise<
+    Array<{ questionId: string; answerHash: string }> | null
+  > {
     try {
-      const data = await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.SECURITY_ANSWERS_HASH,
-      );
+      const data = await AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.SECURITY_ANSWERS_HASH);
       if (!data) return null;
       return JSON.parse(data);
     } catch (error) {
-      console.error("Error getting answer hashes:", error);
+      console.error('Error getting answer hashes:', error);
       return null;
     }
-  };
+  }
 
-  /**
-   * Get security questions without decryption (for recovery flow)
-   * Returns only the questions, not the hashed answers
-   */
-  getSecurityQuestionsForRecovery = async (): Promise<Array<{
-    questionId: string;
-    question: string;
-  }> | null> => {
+  async getSecurityQuestionsForRecovery(): Promise<
+    Array<{ questionId: string; question: string }> | null
+  > {
     try {
-      // We need to store a separate unencrypted copy of just the questions
       const questionsOnly = await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS + "_public",
+        `${APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS}_public`
       );
       if (!questionsOnly) return null;
-
       return JSON.parse(questionsOnly);
     } catch (error) {
-      console.error("Error getting security questions for recovery:", error);
+      console.error('Error getting security questions for recovery:', error);
       return null;
     }
-  };
+  }
 
-  /**
-   * Save public copy of security questions (just the question text)
-   */
-  savePublicSecurityQuestions = async (
-    questions: Array<{ questionId: string; question: string }>,
-  ): Promise<void> => {
+  async savePublicSecurityQuestions(
+    questions: Array<{ questionId: string; question: string }>
+  ): Promise<void> {
     try {
       await AsyncStorage.setItem(
-        APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS + "_public",
-        JSON.stringify(questions),
+        `${APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS}_public`,
+        JSON.stringify(questions)
       );
     } catch (error) {
-      console.error("Error saving public security questions:", error);
-      throw new Error("Failed to save security questions");
+      console.error('Error saving public security questions:', error);
+      throw new Error('Failed to save security questions');
     }
-  };
+  }
 
-  /**
-   * Save a journal entry (encrypted)
-   */
-  saveJournal = async (journal: Journal, key: string): Promise<void> => {
+  // ==================== Journal Operations ====================
+
+  async saveJournal(journal: Journal, key: string): Promise<void> {
     try {
       const journals = await this.listJournals(key);
       const existingIndex = journals.findIndex((j) => j.id === journal.id);
@@ -213,142 +205,111 @@ class AsyncStoreStorageProvider implements VaultStorageProvider {
         journals.push(journal);
       }
 
-      const encrypted = this.cryptoJsManger.encryptJSON(key, journals);
+      const encrypted = await this.encryptJSON(key, journals);
       await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.JOURNALS, encrypted);
     } catch (error) {
-      console.error("Error saving journal:", error);
-      throw new Error("Failed to save journal");
+      console.error('Error saving journal:', error);
+      throw new Error('Failed to save journal');
     }
-  };
+  }
 
-  /**
-   * Get a single journal by ID
-   */
-  getJournal = async (id: string, key: string): Promise<Journal | null> => {
+  async getJournal(id: string, key: string): Promise<Journal | null> {
     try {
       const journals = await this.listJournals(key);
       return journals.find((j) => j.id === id) || null;
     } catch (error) {
-      console.error("Error getting journal:", error);
+      console.error('Error getting journal:', error);
       return null;
     }
-  };
+  }
 
-  /**
-   * List all journals (decrypted)
-   */
-  listJournals = async (key: string): Promise<Journal[]> => {
+  async listJournals(key: string): Promise<Journal[]> {
     try {
-      const encrypted = await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.JOURNALS,
-      );
+      const encrypted = await AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.JOURNALS);
       if (!encrypted) return [];
-
-      return this.cryptoJsManger.decryptJSON(key, encrypted) as Journal[];
+      return await this.decryptJSON(key, encrypted) ;
     } catch (error) {
-      console.error("Error listing journals:", error);
-      throw new Error("Failed to load journals - wrong password?");
+      console.error('Error listing journals:', error);
+      throw new Error('Failed to load journals - wrong password?');
     }
-  };
+  }
 
-  /**
-   * Delete a journal
-   */
-
-  
-  deleteJournal = async (id: string, key?: string): Promise<void> => {
+  async deleteJournal(id: string, key?: string): Promise<void> {
     try {
       if (key === undefined || key === null) {
-        throw new Error("key can not be null for web platform");
+        throw new Error('key cannot be null for web platform');
       }
-
       const journals = await this.listJournals(key);
       const filtered = journals.filter((j) => j.id !== id);
-
-      const encrypted = this.cryptoJsManger.encryptJSON(key, filtered);
+      const encrypted = await this.encryptJSON(key, filtered);
       await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.JOURNALS, encrypted);
     } catch (error) {
-      console.error("Error deleting journal:", error);
-      throw new Error("Failed to delete journal");
+      console.error('Error deleting journal:', error);
+      throw new Error('Failed to delete journal');
     }
-  };
+  }
 
-  /**
-   * Re-encrypt all data with a new key (used when password changes)
-   */
-  reEncryptAllData = async (oldKey: string, newKey: string): Promise<void> => {
+  async reEncryptAllData(oldKey: string, newKey: string): Promise<void> {
     try {
       // Re-encrypt journals
       const journals = await this.listJournals(oldKey);
-      const encryptedJournals = this.cryptoJsManger.encryptJSON(newKey, journals);
-      await AsyncStorage.setItem(
-        APP_CONFIG.STORAGE_KEYS.JOURNALS,
-        encryptedJournals,
-      );
+      const encryptedJournals = await this.encryptJSON(newKey, journals);
+      await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.JOURNALS, encryptedJournals);
 
       // Re-encrypt security questions
       const securityQuestions = await this.getSecurityQuestions(oldKey);
       if (securityQuestions) {
-        const encryptedQuestions = this.cryptoJsManger.encryptJSON(newKey, securityQuestions);
+        const encryptedQuestions = await this.encryptJSON(newKey, securityQuestions);
         await AsyncStorage.setItem(
           APP_CONFIG.STORAGE_KEYS.SECURITY_QUESTIONS,
-          encryptedQuestions,
+          encryptedQuestions
         );
       }
     } catch (error) {
-      console.error("Error re-encrypting data:", error);
-      throw new Error("Failed to re-encrypt data - please try again");
+      console.error('Error re-encrypting data:', error);
+      throw new Error('Failed to re-encrypt data - please try again');
     }
-  };
+  }
 
-  saveVerificationToken = async (key: string): Promise<void> => {
+  // ==================== Verification Token ====================
+
+  async saveVerificationToken(key: string): Promise<void> {
     try {
       const verificationData = {
         timestamp: new Date().toISOString(),
         verified: true,
       };
-      const encrypted = this.cryptoJsManger.encryptJSON(key, verificationData);
-      await AsyncStorage.setItem(
-        APP_CONFIG.STORAGE_KEYS.VERIFICATION_TOKEN,
-        encrypted,
-      );
+      const encrypted = await this.encryptJSON(key, verificationData);
+      await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.VERIFICATION_TOKEN, encrypted);
     } catch (error) {
-      console.error("Error saving verification token:", error);
-      throw new Error("Failed to save verification token");
+      console.error('Error saving verification token:', error);
+      throw new Error('Failed to save verification token');
     }
-  };
+  }
 
-  /**
-   * Verify password by trying to decrypt the verification token
-   */
-  verifyPassword = async (key: string): Promise<boolean> => {
+  async verifyPassword(key: string): Promise<boolean> {
     try {
-      const encrypted = await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.VERIFICATION_TOKEN,
-      );
+      const encrypted = await AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.VERIFICATION_TOKEN);
       if (!encrypted) {
-        // No token stored yet - this shouldn't happen in production
+        // No token stored yet
         return true; // Allow for backward compatibility
       }
-
-      const decrypted = this.cryptoJsManger.decryptJSON(key, encrypted);
+      const decrypted = await this.decryptJSON(key, encrypted);
       return decrypted && decrypted.verified === true;
     } catch (error) {
       // Decryption failed = wrong password
       return false;
     }
-  };
+  }
 
-  /**
-   * Clear all app data (for testing or reset)
-   */
-  clearAllData = async (): Promise<void> => {
+  // ==================== Clear Data ====================
+
+  async clearAllData(): Promise<void> {
     try {
-      AsyncStorage.clear();
-
-      console.log("💥 [Web] Clearing localStorage and sessionStorage");
+      console.log('[Web] Clearing localStorage,AsyncStorage and sessionStorage');
       localStorage.clear();
       sessionStorage.clear();
+      await AsyncStorage.clear();
       console.log("✅ [Web] All storage destroyed");
       // await AsyncStorage.multiRemove([
       //   APP_CONFIG.storageKeys.FIRST_LAUNCH,
@@ -363,129 +324,67 @@ class AsyncStoreStorageProvider implements VaultStorageProvider {
       //   APP_CONFIG.storageKeys.VERIFICATION_TOKEN,
       // ]);
     } catch (error) {
-      console.error("Error clearing data:", error);
-      throw new Error("Failed to clear data");
+      console.error('Error clearing data:', error);
+      throw new Error('Failed to clear data');
     }
-  };
+  }
 
-  /**
-   * ============================================================================
-   * VAULT-BASED ARCHITECTURE (NEW)
-   * ============================================================================
-   * The following functions support the new centralized Data Key architecture
-   * where one master key encrypts all user data, and is wrapped by multiple
-   * access methods (password, security answers, recovery key).
-   */
+  // ==================== Vault Operations ====================
 
-  /**
-   * Save the complete Vault object (encrypted or unencrypted depending on use case)
-   *
-   * The Vault contains:
-   * - Salts for key derivation
-   * - DK wrapped by password, security answers, and recovery key
-   * - Security questions
-   *
-   * @param vault - Vault object to store
-   */
-  saveVault = async (vault: Vault | Record<string, any>): Promise<void> => {
+  async saveVault(vault: Vault | Record<string, any>): Promise<void> {
     try {
-      // Vault is stored as-is (it's already structured with encrypted key wraps)
-      await AsyncStorage.setItem(
-        APP_CONFIG.STORAGE_KEYS.VAULT,
-        JSON.stringify(vault),
-      );
+      await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.VAULT, JSON.stringify(vault));
     } catch (error) {
-      console.error("Error saving vault:", error);
-      throw new Error("Failed to save vault");
+      console.error('Error saving vault:', error);
+      throw new Error('Failed to save vault');
     }
-  };
+  }
 
-  /**
-   * Retrieve the Vault object
-   *
-   * @returns Vault object or null if not found
-   */
-  getVault = async (): Promise<Vault | null> => {
+  async getVault(): Promise<Vault | null> {
     try {
-      const vaultStr = await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.VAULT,
-      );
+      const vaultStr = await AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.VAULT);
       if (!vaultStr) return null;
       return JSON.parse(vaultStr) as Vault;
     } catch (error) {
-      console.error("Error retrieving vault:", error);
+      console.error('Error retrieving vault:', error);
       return null;
     }
-  };
+  }
 
-  /**
-   * Save the recovery key (hashed for display purposes only)
-   * This is shown to the user once during signup
-   *
-   * @param recoveryKey - The full recovery key (UUID format)
-   */
-  saveRecoveryKeyHash = async (recoveryKey: string): Promise<void> => {
+  async saveRecoveryKeyHash(recoveryKey: string): Promise<void> {
     try {
-      // Store a hash of the recovery key for verification purposes
-      // This is NOT used for actual decryption (vault has that)
-      await AsyncStorage.setItem(
-        APP_CONFIG.STORAGE_KEYS.RECOVERY_KEY_DISPLAY,
-        recoveryKey,
-      );
+      await AsyncStorage.setItem(APP_CONFIG.STORAGE_KEYS.RECOVERY_KEY_DISPLAY, recoveryKey);
     } catch (error) {
-      console.error("Error saving recovery key:", error);
-      throw new Error("Failed to save recovery key");
+      console.error('Error saving recovery key:', error);
+      throw new Error('Failed to save recovery key');
     }
-  };
+  }
 
-  /**
-   * Get the recovery key hash (for verification/display UI)
-   *
-   * @returns Recovery key hash or null
-   */
-  getRecoveryKeyHash = async (): Promise<string | null> => {
+  async getRecoveryKeyHash(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem(
-        APP_CONFIG.STORAGE_KEYS.RECOVERY_KEY_DISPLAY,
-      );
+      return await AsyncStorage.getItem(APP_CONFIG.STORAGE_KEYS.RECOVERY_KEY_DISPLAY);
     } catch (error) {
-      console.error("Error retrieving recovery key hash:", error);
+      console.error('Error retrieving recovery key hash:', error);
       return null;
     }
-  };
+  }
 
-  /**
-   * Clear the recovery key after user has acknowledged it
-   * This makes sure it's not accidentally exposed in logs
-   */
-  clearRecoveryKeyDisplay = async (): Promise<void> => {
+  async clearRecoveryKeyDisplay(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(
-        APP_CONFIG.STORAGE_KEYS.RECOVERY_KEY_DISPLAY,
-      );
+      await AsyncStorage.removeItem(APP_CONFIG.STORAGE_KEYS.RECOVERY_KEY_DISPLAY);
     } catch (error) {
-      console.error("Error clearing recovery key display:", error);
+      console.error('Error clearing recovery key display:', error);
     }
-  };
+  }
 
-  /**
-   * Check if a vault has been initialized
-   *
-   * @returns true if vault exists, false otherwise
-   */
-  hasVault = async (): Promise<boolean> => {
+  async hasVault(): Promise<boolean> {
     try {
       const vault = await this.getVault();
       return vault !== null;
     } catch (error) {
-      console.error("Error checking vault existence:", error);
+      console.error('Error checking vault existence:', error);
       return false;
     }
-  };
-
-  DestroyStorage() {
-    localStorage.clear();
-    sessionStorage.clear();
   }
 }
 
