@@ -233,11 +233,11 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
 
     const salts: Salts = {
       master_salt: await this.generateSalt(),
-      security_salt: await this.generateSalt(),
+      security_answer_salt: await this.generateSalt(),
       recovery_salt: await this.generateSalt(),
     };
 
-    const pwdk = await deriveKeyFromPassword(password, salts.security_salt);
+    const pwdk = await deriveKeyFromPassword(password, salts.master_salt);
     const passwordIV = await this.generateIV();
     const dk_wrapped_by_password = await this.encryptAES256GCM(dk, pwdk, passwordIV);
 
@@ -245,7 +245,7 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
     const normalizedAnswers = this.normalizeAnswers(answerStrings);
     const SADerivedKey = await deriveKeyFromPassword(
       normalizedAnswers.combined,
-      salts.security_salt
+      salts.security_answer_salt
     );
     const securityIV = await this.generateIV();
     const dk_wrapped_by_security = await this.encryptAES256GCM(dk, SADerivedKey, securityIV);
@@ -272,7 +272,7 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
       salts,
       key_wraps: {
          dk_wrapped_by_password,
-         dk_wrapped_by_security,
+         dk_wrapped_by_security_ans: dk_wrapped_by_security,
          dk_wrapped_by_recovery,
       },
       security_questions: securityQuestions,
@@ -285,7 +285,7 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
 
   async unlockWithPassword(vault: Vault, password: string): Promise<UnlockResult> {
     try {
-      const pwdk = await deriveKeyFromPassword(password, vault.salts.security_salt);
+      const pwdk = await deriveKeyFromPassword(password, vault.salts.master_salt);
       const dk = await this.decryptAES256GCM(vault.key_wraps.dk_wrapped_by_password, pwdk);
 
       if (dk.length !== 64) {
@@ -308,9 +308,9 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
       const normalizedAnswers = this.normalizeAnswers(answerStrings);
       const sadk = await deriveKeyFromPassword(
         normalizedAnswers.combined,
-        vault.salts.security_salt
+        vault.salts.security_answer_salt
       );
-      const dk = await this.decryptAES256GCM(vault.key_wraps.dk_wrapped_by_security, sadk);
+      const dk = await this.decryptAES256GCM(vault.key_wraps.dk_wrapped_by_security_ans, sadk);
 
       if (dk.length !== 64) {
         throw new Error('Decrypted DK has invalid length');
@@ -336,10 +336,10 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
       }
 
       const newVault = JSON.parse(JSON.stringify(vault)) as Vault;
-      newVault.salts.security_salt = await this.generateSalt();
+      newVault.salts.master_salt = await this.generateSalt();
       newVault.salts.recovery_salt = await this.generateSalt();
 
-      const newPwdk = await deriveKeyFromPassword(newPassword, newVault.salts.security_salt);
+      const newPwdk = await deriveKeyFromPassword(newPassword, newVault.salts.master_salt);
       const newPasswordIV = await this.generateIV();
       newVault.key_wraps.dk_wrapped_by_password = await this.encryptAES256GCM(
         dk,
@@ -375,9 +375,9 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
       }
 
       const newVault = JSON.parse(JSON.stringify(vault)) as Vault;
-      newVault.salts.security_salt = await this.generateSalt();
+      newVault.salts.master_salt = await this.generateSalt();
 
-      const newPwdk = await deriveKeyFromPassword(newPassword, newVault.salts.security_salt);
+      const newPwdk = await deriveKeyFromPassword(newPassword, newVault.salts.master_salt);
       const newPasswordIV = await this.generateIV();
       newVault.key_wraps.dk_wrapped_by_password = await this.encryptAES256GCM(
         dk,
@@ -410,17 +410,17 @@ class QuickCryptoCryptoServiceProvider implements CryptoServiceProvider {
       }
 
       const newVault = JSON.parse(JSON.stringify(vault)) as Vault;
-      newVault.salts.security_salt = await this.generateSalt();
+      newVault.salts.security_answer_salt = await this.generateSalt();
 
       const answerStrings = newQAPairs.map((qa) => qa.answer);
       const normalizedAnswers = this.normalizeAnswers(answerStrings);
       const newSADK = await deriveKeyFromPassword(
         normalizedAnswers.combined,
-        newVault.salts.security_salt
+        newVault.salts.security_answer_salt
       );
 
       const newSecurityIV = await this.generateIV();
-      newVault.key_wraps.dk_wrapped_by_security = await this.encryptAES256GCM(
+      newVault.key_wraps.dk_wrapped_by_security_ans = await this.encryptAES256GCM(
         dk,
         newSADK,
         newSecurityIV
