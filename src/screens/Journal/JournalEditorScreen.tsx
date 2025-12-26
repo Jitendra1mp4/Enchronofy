@@ -1,3 +1,4 @@
+import { getVaultStorageProvider } from "@/src/services/vaultStorageProvider";
 import { setIsImagePickingInProgress } from "@/src/stores/slices/settingsSlice";
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
 import { useFocusEffect } from "@react-navigation/native";
@@ -30,11 +31,11 @@ import {
   base64ToDataUri,
   imageUriToBase64
 } from "../../services/imageService";
-import { getJournal, saveJournal } from "../../services/unifiedStorageService";
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
 import { addJournal, updateJournal } from "../../stores/slices/journalsSlice";
 import { Journal } from "../../types";
 import { Alert } from "../../utils/alert";
+const VaultStorageProvider = getVaultStorageProvider()
 
 const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -167,7 +168,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
     setIsLoading(true);
     try {
-      const journal = await getJournal(generatedJournalId, encryptionKey);
+      const journal = await VaultStorageProvider.getJournal(generatedJournalId, encryptionKey);
       if (journal) {
         setTitle(journal.title || "");
         setText(journal.text);
@@ -209,7 +210,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     let existingJournal: Journal | null = null;
 
       if (generatedJournalId) {
-        existingJournal = await getJournal(generatedJournalId, encryptionKey);
+        existingJournal = await VaultStorageProvider.getJournal(generatedJournalId, encryptionKey);
       }
 
     let journalDate = now;
@@ -237,7 +238,17 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         return false;
       }
 
-        const dateObj = new Date(year, month - 1, day, 12);
+       const currentTime = new Date();
+      const dateObj = new Date(
+        year,
+        month - 1,
+        day,
+        currentTime.getHours(),      // Actual current hour
+        currentTime.getMinutes(),    // Actual current minute
+        currentTime.getSeconds(),    // Actual current second
+        currentTime.getMilliseconds() // Actual current millisecond
+      );
+
         journalDate = dateObj.toISOString();
       }
 
@@ -252,7 +263,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       images: imageBase64List.length > 0 ? imageBase64List : undefined,
     };
 
-    await saveJournal(journal, encryptionKey);
+    await VaultStorageProvider.saveJournal(journal, encryptionKey);
 
     if (isJournalCreated) {
       dispatch(updateJournal(journal));
