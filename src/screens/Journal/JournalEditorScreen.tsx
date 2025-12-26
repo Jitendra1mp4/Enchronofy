@@ -238,7 +238,17 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         return false;
       }
 
-        const dateObj = new Date(year, month - 1, day, 12);
+       const currentTime = new Date();
+      const dateObj = new Date(
+        year,
+        month - 1,
+        day,
+        currentTime.getHours(),      // Actual current hour
+        currentTime.getMinutes(),    // Actual current minute
+        currentTime.getSeconds(),    // Actual current second
+        currentTime.getMilliseconds() // Actual current millisecond
+      );
+
         journalDate = dateObj.toISOString();
       }
 
