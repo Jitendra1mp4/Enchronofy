@@ -1,4 +1,4 @@
-import { setIsExportInProgress } from "@/src/stores/slices/settingsSlice";
+import { setIsExportImportInProgress } from "@/src/stores/slices/settingsSlice";
 import { format as formatDate } from "date-fns";
 import React, { useState } from "react";
 import { Platform, ScrollView, StyleSheet, View } from "react-native";
@@ -95,7 +95,7 @@ const ExportScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const performExport = async (format: ExportFormat, password?: string) => {
     setIsExporting(true);
-    dispatch(setIsExportInProgress(true));
+    dispatch(setIsExportImportInProgress(true));
 
     // Yield to UI
     await new Promise(resolve => resolveImmediately(resolve));
@@ -122,7 +122,7 @@ const ExportScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       Alert.alert('Oops!','Export Failed', error.message || 'An unknown error occurred.');
     } finally {
       setIsExporting(false);
-      dispatch(setIsExportInProgress(false));
+      dispatch(setIsExportImportInProgress(false));
     }
   };
 

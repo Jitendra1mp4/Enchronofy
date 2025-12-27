@@ -1,7 +1,7 @@
 // src/screens/Journal/JournalListScreen.tsx
 
 import { ExportFormat, ExportModal } from "@/src/components/common/ExportModal";
-import { setIsExportInProgress } from "@/src/stores/slices/settingsSlice";
+import { setIsExportImportInProgress } from "@/src/stores/slices/settingsSlice";
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
 import { getJournalCardStyle } from "@/src/utils/theme";
 
@@ -151,7 +151,7 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       return;
     }
 
-    dispatch(setIsExportInProgress(true));
+    dispatch(setIsExportImportInProgress(true));
 
     
     // ✅ YIELD TO UI: Allow the modal to visually close before the JS thread freezes for encryption
@@ -175,7 +175,7 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       console.error("Export failed:", e);
       Alert.alert("Export Failed", e.message || "An unknown error occurred.");
     } finally {
-      dispatch(setIsExportInProgress(false));
+      dispatch(setIsExportImportInProgress(false));
       
     }
   };
