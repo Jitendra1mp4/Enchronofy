@@ -8,6 +8,7 @@ import { ImportMode, parseExportedJournals } from '../services/importService';
 import { getVaultStorageProvider } from '../services/vaultStorageProvider';
 import { useAppDispatch, useAppSelector } from '../stores/hooks';
 import { setJournals } from '../stores/slices/journalsSlice';
+import { setIsExportImportInProgress } from '../stores/slices/settingsSlice';
 import { Alert } from '../utils/alert';
 import { resolveImmediately } from "../utils/immediatePromiseResolver";
 
@@ -63,8 +64,12 @@ const ImportScreen: React.FC<{navigation: any;}> = (navigation: any) => {
     await new Promise(resolve => resolveImmediately(resolve));
 
     try {
+      dispatch(setIsExportImportInProgress(true));
       const jsonText = await readJsonFromPicker();
-      if (!jsonText) { setIsImporting(false); return; }
+      if (!jsonText) {
+        setIsImporting(false);
+        return;
+      }
 
       // Try initial import (might require password)
       await processImport(jsonText);
@@ -77,6 +82,8 @@ const ImportScreen: React.FC<{navigation: any;}> = (navigation: any) => {
         Alert.alert('Import failed', e?.message ?? 'Invalid file.');
         setIsImporting(false);
       }
+    } finally {
+      dispatch(setIsExportImportInProgress(true));
     }
   };
 
