@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "D Journal HUB",
-    "slug": "D-Journal-HUB",
+    "name": "Enchronofy",
+    "slug": "Enchronofy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "djournalhub",
+    "scheme": "enchronofy",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "pro.corelogik.djournalhub"
+      "bundleIdentifier": "pro.corelogik.enchronofy"
     },
     "android": {
-      "package": "pro.corelogik.djournalhub",
+      "package": "pro.corelogik.enchronofy",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",

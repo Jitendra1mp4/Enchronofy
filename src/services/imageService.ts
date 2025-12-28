@@ -1,28 +1,27 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
 
 /**
  * Compress and resize image
  */
-export const compressImage = async (
-  uri: string,
-  maxWidth: number = 1200,
-  maxHeight: number = 1200,
-  quality: number = 0.8
-): Promise<string> => {
-  try {
-    const manipResult = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: maxWidth, height: maxHeight } }],
-      { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
-    );
-    return manipResult.uri;
-  } catch (error) {
-    console.error('Error compressing image:', error);
-    return uri;
-  }
-};
+// export const compressImage = async (
+//   uri: string,
+//   maxWidth: number = 1200,
+//   maxHeight: number = 1200,
+//   quality: number = 0.8
+// ): Promise<string> => {
+//   try {
+//     const manipResult = await ImageManipulator.manipulateAsync(
+//       uri,
+//       [{ resize: { width: maxWidth, height: maxHeight } }],
+//       { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
+//     );
+//     return manipResult.uri;
+//   } catch (error) {
+//     console.error('Error compressing image:', error);
+//     return uri;
+//   }
+// };
 
 /**
  * Convert image URI to base64
@@ -92,19 +91,21 @@ export const base64ToDataUri = (base64: string): string => {
 /**
  * Create thumbnail
  */
-export const createThumbnail = async (
-  uri: string,
-  size: number = 200
-): Promise<string> => {
-  try {
-    const manipResult = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: size, height: size } }],
-      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-    );
-    return manipResult.uri;
-  } catch (error) {
-    console.error('Error creating thumbnail:', error);
-    return uri;
-  }
-};
+// export const createThumbnail = async (
+//   uri: string,
+//   size: number = 200
+// ): Promise<string> => {
+//   try {
+//     const manipResult = await ImageManipulator.manipulateAsync(
+//       uri,
+//       [{ resize: { width: size, height: size } }],
+//       { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+//     );
+//     return manipResult.uri;
+//   } catch (error) {
+//     console.error('Error creating thumbnail:', error);
+//     return uri;
+//   }
+// };
+
+
