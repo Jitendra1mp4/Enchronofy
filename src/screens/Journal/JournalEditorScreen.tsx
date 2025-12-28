@@ -96,10 +96,6 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         setIsCompressingImage(true);
         const selectedUri = result.assets[0].uri;
 
-        // Compress and convert to base64 for optimal storage
-        // const compressedUri = await compressImage(selectedUri, 1200, 1200, 0.8);
-        // const base64 = await imageUriToBase64(compressedUri);
-
         const base64 = await imageUriToBase64(selectedUri);
 
         setImageBase64List([...imageBase64List, base64]);
