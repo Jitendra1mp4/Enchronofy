@@ -5,7 +5,7 @@
  */
 
 // The universal app name - change this to rename everything at once
-const APP_NAME = 'D Journal HUB';
+const APP_NAME = 'Enchronofy';
 
 // Normalized versions for different contexts
 // Using replace with global unicode flag to replace all whitespace
@@ -15,7 +15,7 @@ const APP_NAME_NORMALIZED = APP_NAME.replace(/\s+/g, '-').toLowerCase(); // e.g.
 const APP_NAME_NORMALIZED_UNDERSCORE = APP_NAME.replace(/\s+/g, '_').toLowerCase(); // e.g., "d_journal_hub"
 // eslint-disable-next-line unicorn/prefer-string-replace-all
 const APP_NAME_SLUG = APP_NAME.replace(/\s+/g, '-'); // e.g., "D-Journal-HUB"
-const APP_NAME_PACKAGE = 'djournalhub'; // lowercase, no separators for package name
+const APP_NAME_PACKAGE = 'enchronofy'; // lowercase, no separators for package name
 
 const IS_DEVELOPMENT:boolean = false ;
 const KDF_ITERATIONS =  IS_DEVELOPMENT? 10 : 100999 ;// NIST recommended: 100,000+
@@ -37,7 +37,7 @@ export const APP_CONFIG = {
   IS_DEVELOPMENT,
 
   // Display name
-  displayName:  "🔏 Journal HUB", // APP_NAME,
+  displayName:  "🔏 Enchronofy", // APP_NAME,
 
   // Normalized versions for different use cases
   slug: APP_NAME_SLUG, // For expo slug
