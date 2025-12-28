@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1 },
   content: { padding: 16, paddingBottom: 28, gap: 12 },
-  header: { marginTop: 8, marginBottom: 8, alignItems: "center" },
+  header: { paddingTop:150,marginTop: 8, marginBottom: 8, alignItems: "center" },
   appTitle: { textAlign: "center" },
   subtitle: { textAlign: "center", marginTop: 6 },
   card: { borderRadius: 16, paddingVertical: 10 },
