@@ -4,6 +4,7 @@ import React from "react";
 import { View } from "react-native"; // Don't forget this import
 import { IconButton, useTheme } from "react-native-paper";
 import APP_CONFIG from "../config/appConfig";
+import { useScreenProtection } from "../hooks/useScreenProtection";
 import ExportScreen from "../screens/Export/ExportScreen";
 import HomeScreen from "../screens/Home/HomeScreen";
 import ImportScreen from "../screens/ImportScreen";
@@ -17,6 +18,12 @@ import { logout } from "../stores/slices/authSlice";
 const Stack = createNativeStackNavigator();
 
 export const MainStack: React.FC = () => {
+
+   // 🔒 Enable Security for the Main Stack
+  // This hook ensures that as long as the user is authenticated 
+  // (and this component is rendered), the screen is secure.
+  useScreenProtection(); 
+
   const theme = useTheme();
   const dispatch = useAppDispatch();
 
