@@ -143,7 +143,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 { color: theme.colors.onSurfaceVariant },
               ]}
             >
-              Secure. Private. Yours.
+              {APP_CONFIG.APP_TAGLINE}
             </Text>
           </View>
 
@@ -206,15 +206,20 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 </Button>
               )}
 
-              <Text
+              {/* <Text
                 variant="bodySmall"
                 style={[
                   styles.footer,
                   { color: theme.colors.onSurfaceVariant },
                 ]}
               >
+              Secure. Private. Yours.
                 Your journals are encrypted and stored on your device.
-              </Text>
+              </Text> */}
+                <Text style={styles.aboutText}>Secure. Private. Yours.</Text>
+                          <Text style={[styles.aboutText, { opacity: 0.7 }]}>
+                            Your journals are end-to-end encrypted.
+                          </Text>
             </Card.Content>
           </Card>
         </View>
@@ -290,6 +295,10 @@ const styles = StyleSheet.create({
     marginTop: 14,
     textAlign: "center",
     opacity: 0.9,
+  },
+    aboutText: {
+    textAlign: "center",
+    marginBottom: 4,
   },
 });
 
