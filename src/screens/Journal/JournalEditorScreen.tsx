@@ -1,3 +1,4 @@
+import { MoodSelector } from "@/src/components/journal/MoodSelector";
 import { getVaultStorageProvider } from "@/src/services/vaultStorageProvider";
 import { setIsImagePickingInProgress } from "@/src/stores/slices/settingsSlice";
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
@@ -27,15 +28,12 @@ import {
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { v4 as uuidv4 } from "uuid";
-import {
-  base64ToDataUri,
-  imageUriToBase64
-} from "../../services/imageService";
+import { base64ToDataUri, imageUriToBase64 } from "../../services/imageService";
 import { useAppDispatch, useAppSelector } from "../../stores/hooks";
 import { addJournal, updateJournal } from "../../stores/slices/journalsSlice";
 import { Journal } from "../../types";
 import { Alert } from "../../utils/alert";
-const VaultStorageProvider = getVaultStorageProvider()
+const VaultStorageProvider = getVaultStorageProvider();
 
 const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -62,6 +60,9 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const [isCompressingImage, setIsCompressingImage] = useState(false);
   const [imageIds, setImageIds] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Inside the JournalEditorScreen component, add mood state after other states:
+  const [selectedMood, setSelectedMood] = useState<string>("");
 
   // New state for Markdown Preview toggle
   const [isPreviewMode, setIsPreviewMode] = useState(true);
@@ -157,17 +158,21 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       await handleSave(false);
     };
     callSaveAsync();
-  }, [encryptionKey, text, title, imageBase64List]);
+  }, [encryptionKey, text, title, selectedMood, imageBase64List]);
 
   const loadJournal = async () => {
     if (!encryptionKey) return;
 
     setIsLoading(true);
     try {
-      const journal = await VaultStorageProvider.getJournal(generatedJournalId, encryptionKey);
+      const journal = await VaultStorageProvider.getJournal(
+        generatedJournalId,
+        encryptionKey,
+      );
       if (journal) {
         setTitle(journal.title || "");
         setText(journal.text);
+        setSelectedMood(journal.mood || ""); // ADD THIS LINE
         if (journal.images && journal.images.length > 0) {
           setImageBase64List(journal.images);
           setImageIds(journal.images.map(() => uuidv4()));
@@ -201,71 +206,74 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
     setIsSaving(true);
 
-  try {
-    const now = new Date().toISOString();
-    let existingJournal: Journal | null = null;
+    try {
+      const now = new Date().toISOString();
+      let existingJournal: Journal | null = null;
 
       if (generatedJournalId) {
-        existingJournal = await VaultStorageProvider.getJournal(generatedJournalId, encryptionKey);
-      }
-
-    let journalDate = now;
-    if (existingJournal?.date) {
-      journalDate = existingJournal.date;
-    } else if (selectedDate) {
-      const [year, month, day] = selectedDate.split("-").map(Number);
-      
-      // ✅ VALIDATION: Prevent future dates
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
-      
-      const selectedDateObj = new Date(year, month - 1, day);
-      selectedDateObj.setHours(0, 0, 0, 0);
-      
-      if (selectedDateObj > today) {
-        Alert.alert(
-          "Future Date Not Allowed 📅",
-          "You can only create journal entries for today or past dates.\n\n" +
-          "🚀 Upcoming Feature:\n" +
-          "We're working on a 'Todo & Reminders' feature that will let you plan future notes!\n\n" +
-          "Stay tuned for updates! ✨",
-          [{ text: "Got it!", onPress: () => navigation.goBack() }]
+        existingJournal = await VaultStorageProvider.getJournal(
+          generatedJournalId,
+          encryptionKey,
         );
-        return false;
       }
 
-       const currentTime = new Date();
-      const dateObj = new Date(
-        year,
-        month - 1,
-        day,
-        currentTime.getHours(),      // Actual current hour
-        currentTime.getMinutes(),    // Actual current minute
-        currentTime.getSeconds(),    // Actual current second
-        currentTime.getMilliseconds() // Actual current millisecond
-      );
+      let journalDate = now;
+      if (existingJournal?.date) {
+        journalDate = existingJournal.date;
+      } else if (selectedDate) {
+        const [year, month, day] = selectedDate.split("-").map(Number);
+
+        // ✅ VALIDATION: Prevent future dates
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+
+        const selectedDateObj = new Date(year, month - 1, day);
+        selectedDateObj.setHours(0, 0, 0, 0);
+
+        if (selectedDateObj > today) {
+          Alert.alert(
+            "Future Date Not Allowed 📅",
+            "You can only create journal entries for today or past dates.\n\n" +
+              "🚀 Upcoming Feature:\n" +
+              "We're working on a 'Todo & Reminders' feature that will let you plan future notes!\n\n" +
+              "Stay tuned for updates! ✨",
+            [{ text: "Got it!", onPress: () => navigation.goBack() }],
+          );
+          return false;
+        }
+
+        const currentTime = new Date();
+        const dateObj = new Date(
+          year,
+          month - 1,
+          day,
+          currentTime.getHours(), // Actual current hour
+          currentTime.getMinutes(), // Actual current minute
+          currentTime.getSeconds(), // Actual current second
+          currentTime.getMilliseconds(), // Actual current millisecond
+        );
 
         journalDate = dateObj.toISOString();
       }
 
-    const journal: Journal = {
-      id: generatedJournalId || uuidv4(),
-      date: journalDate,
-      createdAt: existingJournal?.createdAt || now,
-      updatedAt: now,
-      title: title.trim() || undefined,
-      text: text.trim(),
-      mood: undefined,
-      images: imageBase64List.length > 0 ? imageBase64List : undefined,
-    };
+      const journal: Journal = {
+        id: generatedJournalId || uuidv4(),
+        date: journalDate,
+        createdAt: existingJournal?.createdAt || now,
+        updatedAt: now,
+        title: title.trim() || undefined,
+        text: text.trim(),
+        mood: selectedMood || undefined, // ADD THIS LINE
+        images: imageBase64List.length > 0 ? imageBase64List : undefined,
+      };
 
-    await VaultStorageProvider.saveJournal(journal, encryptionKey);
+      await VaultStorageProvider.saveJournal(journal, encryptionKey);
 
-    if (isJournalCreated) {
-      dispatch(updateJournal(journal));
-    } else {
-      dispatch(addJournal(journal));
-    }
+      if (isJournalCreated) {
+        dispatch(updateJournal(journal));
+      } else {
+        dispatch(addJournal(journal));
+      }
 
       setIsJournalCreated(true);
       setIsJournalModified(true);
@@ -369,8 +377,8 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             underlineColor="transparent"
             activeUnderlineColor="transparent"
             style={[styles.titleInput, { color: theme.colors.onSurface }]}
-            cursorColor={theme.colors.primary}              // make caret pop
-            selectionColor={theme.colors.primary + '55'}    // semi‑transparent selection
+            cursorColor={theme.colors.primary} // make caret pop
+            selectionColor={theme.colors.primary + "55"} // semi‑transparent selection
             placeholderTextColor={theme.colors.onSurfaceDisabled}
             returnKeyType="next"
             contentStyle={styles.titleContent}
@@ -380,21 +388,19 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
           {/* Editor / Preview Area */}
           {isPreviewMode ? (
             <View style={styles.previewContainer}>
-              <Pressable onPress={()=>setIsPreviewMode(!isPreviewMode)}>
-              <Markdown style={markdownStyles}>
-                {text.trim()
-                  ? text
-                  : "### ✨ Quick Guide\n" +
-                    "Start writing in **Edit** mode using these formats:\n\n" +
-                    "• `Start with # for Big Header`\n" +
-                    "• `Start with ## for Medium Header`\n" +
-                    "• `Start with - for unordered List item`\n" +
-                    "• `Surround like **Bold Text** for bold text`\n" +
-                    "• `Surround like *Italic Text* for italic`\n"+
-                    "\nTap on eye icon to toggle between preview and edit mode\n"
-                    }
-              </Markdown>
-
+              <Pressable onPress={() => setIsPreviewMode(!isPreviewMode)}>
+                <Markdown style={markdownStyles}>
+                  {text.trim()
+                    ? text
+                    : "### ✨ Quick Guide\n" +
+                      "Start writing in **Edit** mode using these formats:\n\n" +
+                      "• `Start with # for Big Header`\n" +
+                      "• `Start with ## for Medium Header`\n" +
+                      "• `Start with - for unordered List item`\n" +
+                      "• `Surround like **Bold Text** for bold text`\n" +
+                      "• `Surround like *Italic Text* for italic`\n" +
+                      "\nTap on eye icon to toggle between preview and edit mode\n"}
+                </Markdown>
               </Pressable>
             </View>
           ) : (
@@ -409,12 +415,18 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
               style={[styles.bodyInput, { color: theme.colors.onSurface }]}
               placeholderTextColor={theme.colors.onSurfaceDisabled}
               contentStyle={styles.bodyContent}
-               cursorColor={theme.colors.primary}              // make caret pop
-              selectionColor={theme.colors.primary + '55'}    // semi‑transparent selection
+              cursorColor={theme.colors.primary} // make caret pop
+              selectionColor={theme.colors.primary + "55"} // semi‑transparent selection
               textAlignVertical="top"
               autoFocus={!title}
             />
           )}
+
+          <MoodSelector
+            selectedMood={selectedMood}
+            onSelectMood={setSelectedMood}
+            label="How are you feeling?"
+          />
 
           {/* Attachments Section */}
           {(imageBase64List.length > 0 || isCompressingImage) && (

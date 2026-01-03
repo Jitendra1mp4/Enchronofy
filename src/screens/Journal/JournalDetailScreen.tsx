@@ -27,6 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { base64ToDataUri } from "@/src/services/imageService";
 
+import { MOOD_OPTIONS } from "@/src/components/journal/MoodSelector";
 import { getVaultStorageProvider } from "@/src/services/vaultStorageProvider";
 import { useAppDispatch, useAppSelector } from "@/src/stores/hooks";
 import { deleteJournal as deleteJournalAction } from "@/src/stores/slices/journalsSlice";
@@ -35,8 +36,7 @@ import { Alert } from "@/src/utils/alert";
 
 const { width: screenWidth } = Dimensions.get("window");
 
-const VaultStorageProvider = getVaultStorageProvider()
-
+const VaultStorageProvider = getVaultStorageProvider();
 
 const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -60,7 +60,10 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         if (!encryptionKey) return;
         setIsLoading(true);
         try {
-          const loadedJournal = await VaultStorageProvider.getJournal(journalId, encryptionKey);
+          const loadedJournal = await VaultStorageProvider.getJournal(
+            journalId,
+            encryptionKey,
+          );
           setJournal(loadedJournal);
         } catch (error) {
           console.error("❌ Error loading journal detail:", error);
@@ -126,7 +129,10 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
             if (!encryptionKey) return;
             setIsDeleting(true);
             try {
-              await VaultStorageProvider.deleteJournal(journalId,encryptionKey);
+              await VaultStorageProvider.deleteJournal(
+                journalId,
+                encryptionKey,
+              );
               dispatch(deleteJournalAction(journalId));
               navigation.goBack();
             } catch (error) {
@@ -168,7 +174,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor }]}
-      edges={["left", "right","bottom"]}
+      edges={["left", "right", "bottom"]}
     >
       <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} />
 
@@ -212,6 +218,29 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               </Text>
             </View>
           </View>
+
+          {journal.mood && (
+            <View
+              style={[
+                styles.moodBadge,
+                { backgroundColor: theme.colors.secondaryContainer },
+              ]}
+            >
+              <Text style={styles.moodBadgeEmoji}>
+                {MOOD_OPTIONS.find((m) => m.value === journal.mood)?.emoji}
+              </Text>
+              <Text
+                variant="labelLarge"
+                style={[
+                  styles.moodBadgeText,
+                  { color: theme.colors.onSecondaryContainer },
+                ]}
+              >
+                Feeling{" "}
+                {MOOD_OPTIONS.find((m) => m.value === journal.mood)?.label}
+              </Text>
+            </View>
+          )}
 
           {hasTitle ? (
             <Text
@@ -368,7 +397,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom:80
+    paddingBottom: 80,
   },
   header: {
     marginBottom: 24,
@@ -405,6 +434,23 @@ const styles = StyleSheet.create({
   },
   body: {
     minHeight: 200,
+  },
+  moodBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginTop: 12,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+  },
+  moodBadgeEmoji: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  moodBadgeText: {
+    fontWeight: "700",
   },
 
   // Image Grid
@@ -454,7 +500,6 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
 
-
   modalImageFrame: {
     width: "100%",
     height: undefined,
@@ -492,7 +537,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-    fullImage: {
+  fullImage: {
     width: "100%", // was screenWidth
     height: undefined, // was 80
   },
