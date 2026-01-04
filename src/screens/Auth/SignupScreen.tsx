@@ -152,15 +152,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // 5. Mark app as launched
       await  VaultStorageProvider.markAsLaunched();
 
-      // 6. Update Redux state
-      dispatch(setAuthenticated(true));
-
-      // 7. Store the DK in context (user is now logged in with this key)
-      // Decrypt DK using password for immediate access
-      // const { dk } = await CryptoManager.unlockWithPassword(vault, password);
-      dispatch(setEncryptionKey(dk));
-
-      // 8. Show recovery key to user and ask them to save it
+      // 6. Show recovery key to user and ask them to save it
       Alert.alert(
         "Account Created!",
         `Your account has been created successfully.\n\n` +
@@ -183,6 +175,15 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           },
         ],
       );
+
+      // 7. Update Redux state
+      dispatch(setAuthenticated(true));
+
+      // 8. Store the DK in context (user is now logged in with this key)
+      // Decrypt DK using password for immediate access
+      // const { dk } = await CryptoManager.unlockWithPassword(vault, password);
+      dispatch(setEncryptionKey(dk));
+
     } catch (error) {
       console.error("Signup error:", error);
       Alert.alert(
