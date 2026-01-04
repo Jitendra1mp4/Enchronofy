@@ -298,11 +298,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     icon="lightbulb-on-outline"
                     size={15}
                     iconColor={theme.colors.primary}
-                    style={{ margin: 0 }}
+                    style={{ margin: 0, marginRight:0 }}
                   />
                   <Text
                     variant="labelSmall"
                     style={{
+                      marginLeft:-10,
                       fontWeight: "400",
                       opacity: 0.7,
                     }}
@@ -319,11 +320,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <Text
                     style={{
                       fontSize: 11,
+                      marginLeft:2,
                       opacity: 0.9,
                       fontStyle: "italic",
                     }}
-                  >
-                    Shuffle{" "}
+                  >Shuffle
                   </Text>
                 </Button>
            
@@ -331,7 +332,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   icon="pencil-outline"
                   onPress={handleCreateJournalForToday}
                 >
-                  Write it
+                  <Text style={{fontSize:13}}>
+                  Write</Text>
                 </Button>
               </View>
             </View>
