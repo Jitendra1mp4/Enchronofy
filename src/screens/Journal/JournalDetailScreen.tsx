@@ -8,6 +8,7 @@ import {
   Dimensions,
   Image,
   Modal,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -182,147 +183,153 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <IconButton
-                icon="calendar-month-outline"
-                size={18}
-                iconColor={theme.colors.onSurfaceVariant}
-                style={styles.metaIcon}
-              />
-              <Text
-                style={[
-                  styles.metaText,
-                  { color: theme.colors.onSurfaceVariant },
-                ]}
-              >
-                {formattedDate}
-              </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <IconButton
-                icon="clock-time-four-outline"
-                size={18}
-                iconColor={theme.colors.onSurfaceVariant}
-                style={styles.metaIcon}
-              />
-              <Text
-                style={[
-                  styles.metaText,
-                  { color: theme.colors.onSurfaceVariant },
-                ]}
-              >
-                {formattedTime}
-              </Text>
-            </View>
-          </View>
-
-          {journal.mood && (
-            <View
-              style={[
-                styles.moodBadge,
-                { backgroundColor: theme.colors.secondaryContainer },
-              ]}
-            >
-              <Text style={styles.moodBadgeEmoji}>
-                {MOOD_OPTIONS.find((m) => m.value === journal.mood)?.emoji}
-              </Text>
-              <Text
-                variant="labelLarge"
-                style={[
-                  styles.moodBadgeText,
-                  { color: theme.colors.onSecondaryContainer },
-                ]}
-              >
-                Feeling{" "}
-                {MOOD_OPTIONS.find((m) => m.value === journal.mood)?.label}
-              </Text>
-            </View>
-          )}
-
-          {hasTitle ? (
-            <Text
-              style={[styles.title, { color: contentColor }]}
-              variant="displaySmall"
-            >
-              {journal.title}
-            </Text>
-          ) : (
-            <Text
-              style={[
-                styles.title,
-                styles.untitled,
-                { color: theme.colors.onSurfaceVariant },
-              ]}
-              variant="displaySmall"
-            >
-              Untitled Entry
-            </Text>
-          )}
-        </View>
-
-        {/* Image Gallery (Grid Layout) */}
-
-        {journal.images?.length ? (
-          <View style={styles.galleryGrid}>
-            {journal.images.map((base64, index) => {
-              const imageUri = base64ToDataUri(base64);
-              const ratio = imageRatios[imageUri] ?? 4 / 3;
-
-              const wrapperStyle = isSingleImage
-                ? [styles.singleImageWrapper, { aspectRatio: ratio }]
-                : styles.thumbWrapper;
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={wrapperStyle}
-                  onPress={() => setSelectedImage(imageUri)}
-                  activeOpacity={0.9}
+        <Pressable
+          onPress={() =>
+            navigation.navigate("JournalEditor", { journalId: journal.id })
+          }
+        >
+          {/* Header Section */}
+          <View style={styles.header}>
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <IconButton
+                  icon="calendar-month-outline"
+                  size={18}
+                  iconColor={theme.colors.onSurfaceVariant}
+                  style={styles.metaIcon}
+                />
+                <Text
+                  style={[
+                    styles.metaText,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
                 >
-                  <Image
-                    source={{ uri: imageUri }}
-                    style={styles.imageFill}
-                    resizeMode={isSingleImage ? "contain" : "cover"}
-                  />
-                </TouchableOpacity>
-              );
-            })}
+                  {formattedDate}
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <IconButton
+                  icon="clock-time-four-outline"
+                  size={18}
+                  iconColor={theme.colors.onSurfaceVariant}
+                  style={styles.metaIcon}
+                />
+                <Text
+                  style={[
+                    styles.metaText,
+                    { color: theme.colors.onSurfaceVariant },
+                  ]}
+                >
+                  {formattedTime}
+                </Text>
+              </View>
+            </View>
+
+            {journal.mood && (
+              <View
+                style={[
+                  styles.moodBadge,
+                  { backgroundColor: theme.colors.secondaryContainer },
+                ]}
+              >
+                <Text style={styles.moodBadgeEmoji}>
+                  {MOOD_OPTIONS.find((m) => m.value === journal.mood)?.emoji}
+                </Text>
+                <Text
+                  variant="labelLarge"
+                  style={[
+                    styles.moodBadgeText,
+                    { color: theme.colors.onSecondaryContainer },
+                  ]}
+                >
+                  Feeling{" "}
+                  {MOOD_OPTIONS.find((m) => m.value === journal.mood)?.label}
+                </Text>
+              </View>
+            )}
+
+            {hasTitle ? (
+              <Text
+                style={[styles.title, { color: contentColor }]}
+                variant="displaySmall"
+              >
+                {journal.title}
+              </Text>
+            ) : (
+              <Text
+                style={[
+                  styles.title,
+                  styles.untitled,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
+                variant="displaySmall"
+              >
+                Untitled Entry
+              </Text>
+            )}
           </View>
-        ) : null}
 
-        {/* Content Body */}
-        <View style={styles.body}>
-          <Markdown
-            style={{
-              ...markdownStyles,
-              body: {
-                ...markdownStyles.body,
-                fontSize: 16,
-                lineHeight: 26,
-                color: contentColor,
-              },
-              paragraph: { marginBottom: 16 },
-              heading1: {
-                ...markdownStyles.heading1,
-                color: contentColor,
-                marginTop: 24,
-              },
-              heading2: {
-                ...markdownStyles.heading2,
-                color: contentColor,
-                marginTop: 20,
-              },
-            }}
-          >
-            {journal.text}
-          </Markdown>
-        </View>
+          {/* Image Gallery (Grid Layout) */}
 
-        {/* Bottom spacer for the floating bar */}
-        <View style={{ height: 100 }} />
+          {journal.images?.length ? (
+            <View style={styles.galleryGrid}>
+              {journal.images.map((base64, index) => {
+                const imageUri = base64ToDataUri(base64);
+                const ratio = imageRatios[imageUri] ?? 4 / 3;
+
+                const wrapperStyle = isSingleImage
+                  ? [styles.singleImageWrapper, { aspectRatio: ratio }]
+                  : styles.thumbWrapper;
+
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={wrapperStyle}
+                    onPress={() => setSelectedImage(imageUri)}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={styles.imageFill}
+                      resizeMode={isSingleImage ? "contain" : "cover"}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : null}
+
+          {/* Content Body */}
+          <View style={styles.body}>
+            <Markdown
+              style={{
+                ...markdownStyles,
+                body: {
+                  ...markdownStyles.body,
+                  fontSize: 16,
+                  lineHeight: 26,
+                  color: contentColor,
+                },
+                paragraph: { marginBottom: 16 },
+                heading1: {
+                  ...markdownStyles.heading1,
+                  color: contentColor,
+                  marginTop: 24,
+                },
+                heading2: {
+                  ...markdownStyles.heading2,
+                  color: contentColor,
+                  marginTop: 20,
+                },
+              }}
+            >
+              {journal.text}
+            </Markdown>
+          </View>
+
+          {/* Bottom spacer for the floating bar */}
+          <View style={{ height: 100 }} />
+        </Pressable>
       </ScrollView>
 
       {/* Floating Bottom Action Bar */}
