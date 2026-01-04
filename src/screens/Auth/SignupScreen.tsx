@@ -171,18 +171,18 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 "Great!",
                 "🔒Now you have your protected secure vault that only you can access.\n🎉Start your journey..!",
               );
+              // 7. Update Redux state
+              dispatch(setAuthenticated(true));
+        
+              // 8. Store the DK in context (user is now logged in with this key)
+              // Decrypt DK using password for immediate access
+              // const { dk } = await CryptoManager.unlockWithPassword(vault, password);
+              dispatch(setEncryptionKey(dk));
             },
           },
         ],
       );
 
-      // 7. Update Redux state
-      dispatch(setAuthenticated(true));
-
-      // 8. Store the DK in context (user is now logged in with this key)
-      // Decrypt DK using password for immediate access
-      // const { dk } = await CryptoManager.unlockWithPassword(vault, password);
-      dispatch(setEncryptionKey(dk));
 
     } catch (error) {
       console.error("Signup error:", error);
