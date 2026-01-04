@@ -8,7 +8,6 @@ import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import {
   Button,
   Card,
-  Divider,
   Text,
   TextInput,
   useTheme
@@ -182,7 +181,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 {isLoading ? "Unlocking..." : "Unlock"}
               </Button>
 
-              <Divider style={styles.divider} />
+              {/* <Divider style={styles.divider} /> */}
 
               <Button
                 mode="text"
