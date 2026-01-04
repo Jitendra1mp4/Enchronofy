@@ -152,22 +152,14 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       // 5. Mark app as launched
       await  VaultStorageProvider.markAsLaunched();
 
-      // 6. Update Redux state
-      dispatch(setAuthenticated(true));
-
-      // 7. Store the DK in context (user is now logged in with this key)
-      // Decrypt DK using password for immediate access
-      // const { dk } = await CryptoManager.unlockWithPassword(vault, password);
-      dispatch(setEncryptionKey(dk));
-
-      // 8. Show recovery key to user and ask them to save it
+      // 6. Show recovery key to user and ask them to save it
       Alert.alert(
         "Account Created!",
         `Your account has been created successfully.\n\n` +
           `⚠️ IMPORTANT: Save this Recovery Key somewhere safe:\n\n` +
           `${recoveryKey}\n\n` +
-          `You will need this if you ever forget your password. ` +
-          `Write it down or take a screenshot.`,
+          `This can be used to recover your account if you ever forget your password. ` +
+          `Write it down and store it safely.`,
         [
           {
             text: "I have saved my Recovery Key",
@@ -177,12 +169,21 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               );
               Alert.alert(
                 "Great!",
-                "Your journals are now protected with encryption. Start journaling!",
+                "🔒Now you have your protected secure vault that only you can access.\n🎉Start your journey..!",
               );
+              // 7. Update Redux state
+              dispatch(setAuthenticated(true));
+        
+              // 8. Store the DK in context (user is now logged in with this key)
+              // Decrypt DK using password for immediate access
+              // const { dk } = await CryptoManager.unlockWithPassword(vault, password);
+              dispatch(setEncryptionKey(dk));
             },
           },
         ],
       );
+
+
     } catch (error) {
       console.error("Signup error:", error);
       Alert.alert(
