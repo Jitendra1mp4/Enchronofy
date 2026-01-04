@@ -4,16 +4,12 @@ export const PREDEFINED_SECURITY_QUESTIONS = [
     question: "Name of my childhood best friend",
   },
   {
-    id: 'first_school',
-    question: "Name of my first school",
-  },
-  {
     id: 'favorite_food_as_child',
     question: "My favorite food as child",
   },
   {
-    id: 'dream_job_as_child',
-    question: "My dream job as a child",
+    id: 'dream_profession_as_child',
+    question: "My dream profession as a child",
   },
   {
     id: 'favorite_teacher',
@@ -26,6 +22,10 @@ export const PREDEFINED_SECURITY_QUESTIONS = [
   {
     id: 'favorite_book',
     question: "What is your favorite book",
+  },
+  {
+    id: 'first_school',
+    question: "Name of my first school",
   },
   {
     id: 'mothers_birth_day',
