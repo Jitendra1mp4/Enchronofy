@@ -2,6 +2,7 @@
 import { MOOD_OPTIONS } from "@/src/components/journal/MoodSelector";
 import { getVaultStorageProvider } from "@/src/services/vaultStorageProvider";
 import { Alert } from "@/src/utils/alert";
+import { getRandomPrompt } from "@/src/utils/journalPrompts";
 import { getCalendarTheme } from "@/src/utils/theme";
 import { useFocusEffect } from "@react-navigation/native";
 import { format, subDays } from "date-fns";
@@ -45,6 +46,8 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const currentStreak = useAppSelector((state) => state.journals.currentStreak);
   const longestStreak = useAppSelector((state) => state.journals.longestStreak);
   const journals = useAppSelector((state) => state.journals.journals);
+
+  const [todayPrompt, setTodayPrompt] = useState(getRandomPrompt());
 
   const [markedDates, setMarkedDates] = useState<any>({});
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -115,7 +118,11 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   const handleCreateJournalForToday = () => {
     const today = format(new Date(), "yyyy-MM-dd");
-    navigation.navigate("JournalEditor", { selectedDate: today });
+    navigation.navigate("JournalEditor", {
+      selectedDate: today,
+      promptText: todayPrompt.text, // Pass the current prompt
+      promptId: todayPrompt.id, // Pass prompt ID for tracking
+    });
   };
 
   const calendarTheme = React.useMemo(
@@ -169,13 +176,6 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     : "Create your first entry and begin your streak."}
                 </Text>
               </View>
-
-              <IconButton
-                icon="pencil-outline"
-                mode="contained-tonal"
-                onPress={handleCreateJournalForToday}
-                disabled={!encryptionKey}
-              />
             </View>
 
             <View style={styles.statGrid}>
@@ -248,6 +248,82 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </Card.Content>
         </Card>
 
+        <Card style={{ ...styles.card, borderColor: subtleBorder }}>
+          <Card.Content>
+            <View style={styles.promptPreviewContainer}>
+              {/* Header */}
+
+              {/* Prompt Text - Tappable */}
+              <Pressable
+                onPress={handleCreateJournalForToday}
+                style={{
+                  padding: 16,
+                  backgroundColor: heroBg,
+                  borderRadius: 12,
+                  borderColor: theme.colors.primary,
+                }}
+              >
+                <Text
+                  variant="titleMedium"
+                  style={{
+                    fontSize: 20,
+                    opacity: 0.8,
+                    color: theme.colors.onSurface,
+                    lineHeight: 24,
+                    fontWeight: "500",
+                  }}
+                >
+                  "{todayPrompt.text}"
+                </Text>
+              </Pressable>
+
+              {/* Actions */}
+              <View style={styles.promptActions}>
+                <View style={styles.promptHeader}>
+                  <IconButton
+                    icon="lightbulb-on-outline"
+                    size={15}
+                    iconColor={theme.colors.primary}
+                    style={{ margin: 0 }}
+                  />
+                  <Text
+                    variant="labelSmall"
+                    style={{
+                      fontWeight: "400",
+                      opacity: 0.7,
+                    }}
+                  >
+                    Today's Prompt
+                  </Text>
+                </View>
+                <Button
+                  mode="text"
+                  icon="shuffle-variant"
+                  onPress={() => setTodayPrompt(getRandomPrompt())}
+                  compact
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      opacity: 0.9,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Shuffle{" "}
+                  </Text>
+                </Button>
+           
+                <Button
+                  icon="pencil-outline"
+                  onPress={handleCreateJournalForToday}
+                >
+                  Write it
+                </Button>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
         {/* RECENT ACTIVITY */}
         <Card style={[styles.card, { borderColor: subtleBorder }]}>
           <Card.Content>
@@ -275,12 +351,14 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
               // GET MOOD FOR THIS DAY - ADD THIS
               const dayJournals = journals.filter(
-                (j) => format(new Date(j.date), 'yyyy-MM-dd') === d.dateKey
+                  (j) => format(new Date(j.date), "yyyy-MM-dd") === d.dateKey,
               );
               const dayMoods = dayJournals
                 .map((j) => j.mood)
                 .filter((m) => m)
-                .map((m) => MOOD_OPTIONS.find((opt) => opt.value === m)?.emoji)
+                  .map(
+                    (m) => MOOD_OPTIONS.find((opt) => opt.value === m)?.emoji,
+                  )
                 .filter((e) => e);
               const moodDisplay = dayMoods.length > 0 ? dayMoods[0] : null;
 
@@ -288,7 +366,9 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 <Pressable
                   key={d.dateKey}
                   onPress={() =>
-                    navigation.navigate('JournalList', { selectedDate: d.dateKey })
+                      navigation.navigate("JournalList", {
+                        selectedDate: d.dateKey,
+                      })
                   }
                   style={[
                     styles.dayPill,
@@ -296,17 +376,17 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   ]}
                 >
                   <Text style={[styles.dayPillTop, { color: pillText }]}>
-                    {d.isToday ? 'Today' : d.dateLabel}
+                      {d.isToday ? "Today" : d.dateLabel}
                   </Text>
                   <Text style={[styles.dayPillMid, { color: pillText }]}>
-                    {active ? '✓' : '·'}
+                      {active ? "✓" : "·"}
                   </Text>
                   {/* ADD MOOD DISPLAY */}
                   {moodDisplay && (
                     <Text style={styles.dayPillMood}>{moodDisplay}</Text>
                   )}
                   <Text style={[styles.dayPillBottom, { color: pillText }]}>
-                    {d.count} {d.count === 1 ? 'entry' : 'entries'}
+                      {d.count} {d.count === 1 ? "entry" : "entries"}
                   </Text>
                 </Pressable>
               );
@@ -513,6 +593,21 @@ dayPillMood: {
     fontWeight: "bold",
     marginBottom: 6, // little spacing
     textAlign: "center",
+  },
+
+  promptPreviewContainer: {
+    gap: 12,
+  },
+  promptHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  promptActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
   },
 });
 

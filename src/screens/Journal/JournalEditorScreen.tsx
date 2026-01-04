@@ -1,6 +1,7 @@
 import { MoodSelector } from "@/src/components/journal/MoodSelector";
 import { getVaultStorageProvider } from "@/src/services/vaultStorageProvider";
 import { setIsImagePickingInProgress } from "@/src/stores/slices/settingsSlice";
+import { getRandomPrompt, JournalPrompt } from "@/src/utils/journalPrompts";
 import { getMarkdownStyles } from "@/src/utils/markdownStyles";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
@@ -47,6 +48,8 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   const journalId = route.params?.journalId || null;
   const selectedDate = route.params?.selectedDate || null;
   const isAlreadyExist = !!journalId;
+  const promptFromHome = route.params?.promptText ?? null;
+  const promptIdFromHome = route.params?.promptId ?? null;
 
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -67,6 +70,11 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   // New state for Markdown Preview toggle
   const [isPreviewMode, setIsPreviewMode] = useState(true);
   const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
+
+  const [currentPrompt, setCurrentPrompt] = useState<JournalPrompt | null>(
+    null,
+  );
+  const [showPrompt, setShowPrompt] = useState(false);
 
   // Request camera permissions on mount
   useEffect(() => {
@@ -122,6 +130,30 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       },
     ]);
   };
+
+  // Initialize prompt for NEW entries only
+  useEffect(() => {
+    if (!journalId && !isAlreadyExist && title.length === 0) {
+      let prompt;
+
+      // Use prompt passed from home screen if available
+      if (promptFromHome && promptIdFromHome) {
+        prompt = {
+          id: promptIdFromHome,
+          text: promptFromHome,
+          category: "reflection" as const, // Default category
+        };
+      } else {
+        // Otherwise get a random prompt
+        prompt = getRandomPrompt();
+      }
+
+      setCurrentPrompt(prompt);
+      setShowPrompt(true);
+      // Pre-fill title with prompt text so user can edit it
+      setTitle(prompt.text);
+    }
+  }, [journalId, isAlreadyExist, promptFromHome, promptIdFromHome]);
 
   // This triggers by pressing back from any screen which I am not intended for.
   useFocusEffect(
@@ -186,6 +218,14 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleShufflePrompt = () => {
+    const newPrompt = getRandomPrompt();
+    setCurrentPrompt(newPrompt);
+    setShowPrompt(true);
+    // Pre-fill title with new prompt
+    setTitle(newPrompt.text);
   };
 
   // Find the handleSave function and update it with future date validation
@@ -332,7 +372,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             {selectedDate ? (
               <Chip
                 icon="calendar-month-outline"
-                compact
+                compact={false}
                 style={styles.dateChip}
                 textStyle={styles.dateChipText}
               >
@@ -353,6 +393,18 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
                 />
               </View>
 
+
+            {/* Shuffle button - only show for new entries with prompt */}
+            {showPrompt && currentPrompt && !journalId && (
+              <IconButton
+                icon="shuffle-variant"
+                size={20}
+                onPress={handleShufflePrompt}
+                iconColor={theme.colors.primary}
+                style={styles.toggleContainer}
+                animated
+              />
+            )}
               {/* <Button
                 mode="contained"
                 icon="check"
@@ -368,22 +420,39 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             </View>
           </View>
 
-          {/* Title - Modern "Ghost" Style */}
+         
+          <View style={styles.titleRow}>
           <TextInput
-            placeholder="Title"
+              placeholder="Title (tap to edit)"
             value={title}
-            onChangeText={setTitle}
+              onChangeText={(text) => {
+                setTitle(text);
+                // Hide prompt indicator once user modifies the text
+                if (
+                  showPrompt &&
+                  currentPrompt &&
+                  text !== currentPrompt.text
+                ) {
+                  // setShowPrompt(false);
+                }
+              }}
             mode="flat"
             underlineColor="transparent"
             activeUnderlineColor="transparent"
-            style={[styles.titleInput, { color: theme.colors.onSurface }]}
-            cursorColor={theme.colors.primary} // make caret pop
-            selectionColor={theme.colors.primary + "55"} // semi‑transparent selection
-            placeholderTextColor={theme.colors.onSurfaceDisabled}
+              multiline={true} // ✅ ADD THIS
+              // numberOfLines={3}                         // ✅ ADD THIS (shows up to 3 lines)
+              textAlignVertical="center" // ✅ ADD THIS (align text to top)
+              style={{
+                ...styles.titleInput,
+                color: theme.colors.onSurface,
+              }}
+              cursorColor={theme.colors.primary}
+              selectionColor={`${theme.colors.primary}55`}
+              placeholderTextColor={theme.colors.onSurfaceVariant}
             returnKeyType="next"
             contentStyle={styles.titleContent}
           />
-
+          </View>
           {/* Editor Area - Distraction Free */}
           {/* Editor / Preview Area */}
           {isPreviewMode ? (
@@ -570,9 +639,23 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 10,
     paddingBottom: 80,
     flexGrow: 1,
+  },
+
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start", 
+    justifyContent: "space-between",
+    gap: 8,
+    paddingBottom:0,
+  },
+
+  promptIndicator: {
+    marginBottom: 12,
+    marginTop: -4,
+    paddingHorizontal: 4,
   },
 
   // Header
@@ -580,9 +663,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+     marginBottom: 5,
   },
   headerRight: {
+    padding:0,height:0,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -594,10 +678,9 @@ const styles = StyleSheet.create({
   },
   dateChipText: {
     fontSize: 12,
-    marginVertical: -2, // Tighten vertical centering on some platforms
   },
   toggleContainer: {
-    marginRight: 8,
+    // marginRight: 8,
   },
   saveButton: {
     borderRadius: 20,
@@ -612,16 +695,17 @@ const styles = StyleSheet.create({
 
   // Inputs
   titleInput: {
+    flex: 1,
     backgroundColor: "transparent",
     paddingHorizontal: 0,
-    marginBottom: 8,
-    // Negative margin to align text with left edge (Paper adds internal padding)
+    paddingVertical:0,
     marginLeft: -4,
   },
   titleContent: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "800",
-    lineHeight: 32,
+    lineHeight: 26,
+    flexWrap: "wrap",
   },
   bodyInput: {
     backgroundColor: "transparent",
