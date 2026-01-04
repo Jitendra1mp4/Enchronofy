@@ -90,7 +90,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const updateMarkedDates = () => {
-    const marked = getMarkedDates(journals);
+    const marked = getMarkedDates(journals,theme.colors);
     setMarkedDates(marked);
   };
 
@@ -186,9 +186,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 ]}
                 onPress={() => navigation.navigate("JournalList")}
               >
-                <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                <Animated.View style={{ transform: [{ scale: scaleAnim }] ,  flexDirection:'row'}}>
                   <Text variant="displaySmall" style={styles.statValue}>
-                    {journals.length} 📝
+                    {journals.length}
+                  </Text>
+                  <Text  style={styles.statEmojiValue}>
+                    📝
                   </Text>
                 </Animated.View>
                 <Text
@@ -205,9 +208,12 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   { backgroundColor: heroBg, borderColor: subtleBorder },
                 ]}
               >
-                <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-                  <Text variant="displaySmall" style={styles.statValue}>
-                    {currentStreak} 🔥
+                <Animated.View style={{ transform: [{ scale: scaleAnim }], flexDirection:'row' }}>
+                  <Text variant="displayMedium" style={styles.statValue}>
+                    {currentStreak}
+                  </Text>
+                  <Text style={styles.statEmojiValue}>
+                    🔥
                   </Text>
                 </Animated.View>
                  
@@ -415,7 +421,7 @@ const HomeScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               markedDates={markedDates}
               markingType="dot"
               onDayPress={handleDayPress}
-              maxDate={format(new Date(), "yyyy-MM-dd")}
+              // maxDate={format(new Date(), "yyyy-MM-dd")}
               disabledByDefault={false}
             />
           </Card.Content>
@@ -528,6 +534,10 @@ const styles = StyleSheet.create({
     fontSize:35,
     fontWeight: "800",
     textAlign: "center", // add
+  },
+  statEmojiValue: {
+    // marginTop:6, 
+    fontSize:20, // add
   },
 
   heroChipsRow: {

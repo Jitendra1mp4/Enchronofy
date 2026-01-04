@@ -194,7 +194,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               <View style={styles.metaItem}>
                 <IconButton
                   icon="calendar-month-outline"
-                  size={18}
+                  size={15}
                   iconColor={theme.colors.onSurfaceVariant}
                   style={styles.metaIcon}
                 />
@@ -210,7 +210,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               <View style={styles.metaItem}>
                 <IconButton
                   icon="clock-time-four-outline"
-                  size={18}
+                  size={15}
                   iconColor={theme.colors.onSurfaceVariant}
                   style={styles.metaIcon}
                 />
@@ -241,9 +241,7 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
                     styles.moodBadgeText,
                     { color: theme.colors.onSecondaryContainer },
                   ]}
-                >
-                  Feeling{" "}
-                  {MOOD_OPTIONS.find((m) => m.value === journal.mood)?.label}
+                >{MOOD_OPTIONS.find((m) => m.value === journal.mood)?.label}
                 </Text>
               </View>
             )}
@@ -422,7 +420,7 @@ const styles = StyleSheet.create({
   },
   metaIcon: {
     margin: 0,
-    marginRight: -4,
+    marginRight: 4,
   },
   metaText: {
     fontSize: 13,
@@ -443,21 +441,25 @@ const styles = StyleSheet.create({
     minHeight: 200,
   },
   moodBadge: {
+    flex:1,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
     marginTop: 12,
     marginBottom: 8,
     alignSelf: "flex-start",
   },
   moodBadgeEmoji: {
-    fontSize: 18,
-    marginRight: 8,
+    fontSize: 15,
+    marginRight:2,
+    marginBottom:2
   },
   moodBadgeText: {
-    fontWeight: "700",
+    fontSize: 12,
+    fontStyle:'italic',
+    fontWeight: 300,
   },
 
   // Image Grid
