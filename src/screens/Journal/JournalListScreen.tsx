@@ -397,7 +397,7 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                     size={20}
                     mode="contained-tonal"
                     iconColor={theme.colors.error}
-                    style={styles.editButton}
+                    style={[styles.editButton,{backgroundColor:theme.colors.inverseOnSurface}]}
                     onPress={() => handleDeleteJournal(item.id)}
                   />
                   <IconButton
@@ -405,7 +405,7 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                     size={20}
                     mode="contained-tonal"
                     iconColor={theme.colors.primary}
-                    style={styles.editButton}
+                    style={[styles.editButton,{backgroundColor:theme.colors.inverseOnSurface}]}
                     onPress={(e: any) => {
                       e?.stopPropagation?.();
                       navigation.navigate("JournalEditor", {

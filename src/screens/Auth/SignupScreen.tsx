@@ -157,10 +157,10 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       Alert.alert(
         "Account Created!",
         `Your account has been created successfully.\n\n` +
-        `⚠️ IMPORTANT: Save this Recovery Key somewhere safe:\n\n` +
-        `${recoveryKey}\n\n` +
-        `This can be used to recover your account if you ever forget your password. ` +
-        `Write it down and store it safely.`,
+          `⚠️ IMPORTANT: Save this Recovery Key somewhere safe:\n\n` +
+          `${recoveryKey}\n\n` +
+          `This can be used to recover your account if you ever forget your password. ` +
+          `Write it down and store it safely.`,
         [
           {
             text: "I have saved my Recovery Key",
@@ -219,10 +219,10 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text variant="headlineMedium"
               style={[{
                 color: theme.colors.primary
-              },
-              {
-                textAlign: "center",
-                fontWeight: "700",
+                },
+                {
+                  textAlign: "center",
+                  fontWeight: "700",
               }]}
             >
               {APP_CONFIG.displayName}
@@ -239,7 +239,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
           <View style={{
             alignItems: 'center',
-            marginBottom: 100,
+              marginBottom: 100,
           }}>
 
             <Divider style={[styles.divider,
@@ -248,11 +248,11 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
 
           <View style={{
-            borderRadius: 16,
-            width: "100%",
-            maxWidth: 440,
+              borderRadius: 16,
+              width: "100%",
+              maxWidth: 440,
             marginBottom:200,
-            alignSelf: "center",
+              alignSelf: "center",
           }}>
             {/* Password section */}
             <Card
@@ -264,7 +264,7 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   Create password
                 </Text>
 
-               <Text
+                <Text
                   variant="bodySmall"
                   style={[
                     styles.sectionHint,
@@ -359,8 +359,8 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   <Chip
                  
                    compact icon="shield-key-outline">
-                    {selectedQuestions.length}/3
-                  </Chip>
+                  {selectedQuestions.length}/3
+                </Chip>
 
                 <View style={styles.questionsWrap}>
                   {PREDEFINED_SECURITY_QUESTIONS.map((q) => {
@@ -466,18 +466,24 @@ const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             >
               Already set up? Login
             </Button>
-
           </View>
 
-             <View style={{
-              marginTop:50,              
-            }}>
-              <Text style={[styles.aboutText,{color:theme.colors.secondary}]}>🔒</Text>
-              <Text style={[styles.aboutText,{color:theme.colors.secondary}]}>Secure. Private. Yours.</Text>
-              <Text style={[styles.aboutText, { opacity: 0.7, color:theme.colors.secondary }]}>
-                Your journals are encrypted and stored securely on your device.
-              </Text>
-            </View>
+          <View style={styles.aboutCard}>
+            <Text style={[styles.aboutText, { color: theme.colors.secondary }]}>
+              🔒
+            </Text>
+            <Text style={[styles.aboutText, { color: theme.colors.secondary }]}>
+              Secure. Private. Yours.
+            </Text>
+            <Text
+              style={[
+                styles.aboutText,
+                { opacity: 0.7, color: theme.colors.secondary },
+              ]}
+            >
+              Your journals are encrypted and stored securely on your device.
+            </Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -514,15 +520,25 @@ const styles = StyleSheet.create({
   sectionTitle: { marginBottom: 8, fontWeight: "700" },
   sectionHint: { marginBottom: 12 },
   input: { marginBottom: 8 },
-  questionsWrap: { flexDirection: "column", 
-     marginTop: 20, flexWrap: "wrap", gap: 8 },
-  questionChip: { width:'100%' , borderRadius:0, borderTopRightRadius:10, borderBottomRightRadius:10,  flex:1,},
-  answerBlock: { marginTop: 10, },
+  questionsWrap: {
+    flexDirection: "column",
+    marginTop: 20,
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  questionChip: {
+    width: "100%",
+    borderRadius: 0,
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
+    flex: 1,
+  },
+  answerBlock: { marginTop: 10 },
   cta: { marginTop: 10, borderRadius: 14 },
-  ctaContent: { 
-    paddingVertical: 8
-   },
-  link: { 
+  ctaContent: {
+    paddingVertical: 8,
+  },
+  link: {
     marginTop:30,
   },
   cardContent: {
@@ -535,9 +551,15 @@ const styles = StyleSheet.create({
     width: 200,
     marginHorizontal: 200
   },
-   aboutText: {
+  aboutText: {
+    fontSize: 11,
     textAlign: "center",
     marginBottom: 4,
+  },
+  aboutCard: {
+    maxWidth: 240,
+    marginHorizontal: "auto",
+    opacity: 0.8,
   },
 });
 
