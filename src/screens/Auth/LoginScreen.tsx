@@ -220,10 +220,7 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </Card.Content>
           </Card>
 
-              <View style={{
-                marginTop:50,
-                
-              }}>
+              <View style={styles.aboutCard}>
                 <Text style={[styles.aboutText,{color:theme.colors.secondary}]}>🔒</Text>
                 <Text style={[styles.aboutText,{color:theme.colors.secondary}]}>Secure. Private. Yours.</Text>
                 <Text style={[styles.aboutText, { opacity: 0.7, color:theme.colors.secondary }]}>
@@ -307,7 +304,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     opacity: 0.9,
   },
+    aboutCard: {
+    marginTop: 50,
+    maxWidth: 240,
+    marginHorizontal: "auto",
+    opacity: 0.8,
+  },
     aboutText: {
+    fontSize:11,
     textAlign: "center",
     marginBottom: 4,
   },
