@@ -386,6 +386,9 @@ Here’s how to get more out of it:
 And remember: your future self will probably be kinder to you than you are now, so give them something real to read.
 
 ***
+## License
+Copyright © 2026 Jitendra Sahu  
+Licensed under the GNU General Public License v3.0.
 
 ## 10. Common Questions (Quick FAQs)
 
@@ -448,3 +451,4 @@ Usually a few seconds for hundreds of entries. Progress indicator shows while pr
 
 **Q: What if I lose my phone?**  
 If you have an encrypted backup stored safely, restore it on a new device via Import. No backup = no recovery. 
+
