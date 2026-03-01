@@ -6,23 +6,24 @@ import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import {
-  Button,
-  Card,
-  Divider,
-  Text,
-  TextInput,
-  useTheme
+    Button,
+    Card,
+    Divider,
+    Text,
+    TextInput,
+    useTheme,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { lastRouteService } from "../../services/lastRouteService";
 import { useAppDispatch } from "../../stores/hooks";
 import {
-  setAuthenticated,
-  setEncryptionKey,
+    setAuthenticated,
+    setEncryptionKey,
 } from "../../stores/slices/authSlice";
 import { Alert } from "../../utils/alert";
 
-const CryptoManager = getCryptoProvider() ;
-const VaultStorageProvider = getVaultStorageProvider()
+const CryptoManager = getCryptoProvider();
+const VaultStorageProvider = getVaultStorageProvider();
 
 const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const theme = useTheme();
@@ -44,8 +45,8 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           // optional: show loading state while checking
           setVaultReady(false);
 
-          const firstTime = await  VaultStorageProvider.isFirstLaunch();
-          const vaultData = await  VaultStorageProvider.getVault();
+          const firstTime = await VaultStorageProvider.isFirstLaunch();
+          const vaultData = await VaultStorageProvider.getVault();
 
           if (!isActive) return;
 
@@ -87,12 +88,12 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
 
     setIsLoading(true);
-     // Yield control to let React paint the loading state FIRST
-    await new Promise(resolve => resolveImmediately(resolve));
+    // Yield control to let React paint the loading state FIRST
+    await new Promise((resolve) => resolveImmediately(resolve));
     try {
       console.log("🔓 Unlocking...");
 
-      const vaultToUse = cachedVault ?? (await  VaultStorageProvider.getVault());
+      const vaultToUse = cachedVault ?? (await VaultStorageProvider.getVault());
       if (!vaultToUse) {
         Alert.alert("Oops!", "No account found. Please create an account.");
         return;
@@ -106,6 +107,11 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         typeof unlockResult === "string" ? unlockResult : unlockResult.dk;
 
       console.log("✅ DK unlocked successfully");
+
+      // Pre-load the last route into memory BEFORE flipping isAuthenticated.
+      // This prevents the AsyncStorage race where the initial Home navigation
+      // state would overwrite the saved route before MainStack can read it.
+      await lastRouteService.primeBeforeLogin();
 
       // Update Redux
       dispatch(setAuthenticated(true));
@@ -133,10 +139,14 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text variant="headlineMedium" 
-            style={[{
-                    color:theme.colors.primary},
-                    styles.title]}
+            <Text
+              variant="headlineMedium"
+              style={[
+                {
+                  color: theme.colors.primary,
+                },
+                styles.title,
+              ]}
             >
               {APP_CONFIG.displayName}
             </Text>
@@ -150,19 +160,21 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               {APP_CONFIG.APP_TAGLINE}
             </Text>
           </View>
-          <View style={{
-              alignItems:'center',
-              marginBottom:100,             
-            }}>
-
-            <Divider style={[styles.divider, 
-              { borderColor: theme.colors.primary,}]} />
+          <View
+            style={{
+              alignItems: "center",
+              marginBottom: 100,
+            }}
+          >
+            <Divider
+              style={[styles.divider, { borderColor: theme.colors.primary }]}
+            />
           </View>
 
           <Card
             style={[styles.card, { backgroundColor: theme.colors.surface }]}
           >
-            <Card.Content style={styles.cardContent}>             
+            <Card.Content style={styles.cardContent}>
               <TextInput
                 label="Password"
                 value={password}
@@ -194,8 +206,6 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 {isLoading ? "Unlocking..." : "Unlock"}
               </Button>
 
-            
-
               <Button
                 mode="text"
                 onPress={() => navigation.navigate("ForgotPassword")}
@@ -220,13 +230,22 @@ const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             </Card.Content>
           </Card>
 
-              <View style={styles.aboutCard}>
-                <Text style={[styles.aboutText,{color:theme.colors.secondary}]}>🔒</Text>
-                <Text style={[styles.aboutText,{color:theme.colors.secondary}]}>Secure. Private. Yours.</Text>
-                <Text style={[styles.aboutText, { opacity: 0.7, color:theme.colors.secondary }]}>
-                  Your journals are encrypted and stored securely on your device.
-                </Text>
-              </View>
+          <View style={styles.aboutCard}>
+            <Text style={[styles.aboutText, { color: theme.colors.secondary }]}>
+              🔒
+            </Text>
+            <Text style={[styles.aboutText, { color: theme.colors.secondary }]}>
+              Secure. Private. Yours.
+            </Text>
+            <Text
+              style={[
+                styles.aboutText,
+                { opacity: 0.7, color: theme.colors.secondary },
+              ]}
+            >
+              Your journals are encrypted and stored securely on your device.
+            </Text>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -284,10 +303,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   divider: {
-   borderWidth:1,
-   borderRadius:10,   
-    width:200,
-    marginHorizontal:200
+    borderWidth: 1,
+    borderRadius: 10,
+    width: 200,
+    marginHorizontal: 200,
   },
   link: {
     alignSelf: "center",
@@ -304,14 +323,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     opacity: 0.9,
   },
-    aboutCard: {
+  aboutCard: {
     marginTop: 50,
     maxWidth: 240,
     marginHorizontal: "auto",
     opacity: 0.8,
   },
-    aboutText: {
-    fontSize:11,
+  aboutText: {
+    fontSize: 11,
     textAlign: "center",
     marginBottom: 4,
   },
