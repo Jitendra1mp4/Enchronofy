@@ -7,6 +7,7 @@ export type Journal = {
   text: string;
   mood?: string;
   images?: string[]; // Now stores base64 strings instead of file paths
+  tags?: string[]; // User-defined labels for categorising entries
 };
 
 export type SecurityQuestion = {
