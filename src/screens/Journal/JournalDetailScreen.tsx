@@ -19,6 +19,7 @@ import Markdown from "react-native-markdown-display";
 import {
   ActivityIndicator,
   Button,
+  Chip,
   IconButton,
   Surface,
   Text,
@@ -246,6 +247,27 @@ const JournalDetailScreen: React.FC<{ navigation: any; route: any }> = ({
               </View>
             )}
 
+            {journal.tags && journal.tags.length > 0 && (
+              <View style={styles.tagsRow}>
+                {journal.tags.map((tag) => (
+                  <Chip
+                    key={tag}
+                    compact
+                    style={[
+                      styles.tagChip,
+                      { backgroundColor: theme.colors.tertiaryContainer },
+                    ]}
+                    textStyle={[
+                      styles.tagChipText,
+                      { color: theme.colors.onTertiaryContainer },
+                    ]}
+                  >
+                    #{tag}
+                  </Chip>
+                ))}
+              </View>
+            )}
+
             {hasTitle ? (
               <Text
                 style={[styles.title, { color: contentColor }]}
@@ -460,6 +482,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle:'italic',
     fontWeight: 300,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  tagChip: {
+    height: 28,
+  },
+  tagChipText: {
+    fontSize: 11,
   },
 
   // Image Grid

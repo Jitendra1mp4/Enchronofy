@@ -36,6 +36,8 @@ import { Journal } from "../../types";
 import { Alert } from "../../utils/alert";
 const VaultStorageProvider = getVaultStorageProvider();
 
+const MAX_TAGS = 10;
+
 const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
   route,
@@ -66,6 +68,10 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
 
   // Inside the JournalEditorScreen component, add mood state after other states:
   const [selectedMood, setSelectedMood] = useState<string>("");
+
+  // Tags state
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInputValue, setTagInputValue] = useState("");
 
   // New state for Markdown Preview toggle
   const [isPreviewMode, setIsPreviewMode] = useState(true);
@@ -178,7 +184,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         onBackPress,
       );
       return () => subscription.remove();
-    }, [text, title, imageBase64List,selectedMood, encryptionKey, isJournalModified]),
+    }, [text, title, imageBase64List, tags, selectedMood, encryptionKey, isJournalModified]),
   );
 
   useFocusEffect(
@@ -195,7 +201,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         await handleSave(false);
       };
       callSaveAsync();
-    }, [encryptionKey, text, title, selectedMood, imageBase64List]),
+    }, [encryptionKey, text, title, selectedMood, tags, imageBase64List]),
   );
 
   const loadJournal = async () => {
@@ -211,6 +217,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         setTitle(journal.title || "");
         setText(journal.text);
         setSelectedMood(journal.mood || ""); // ADD THIS LINE
+        setTags(journal.tags || []);
         if (journal.images && journal.images.length > 0) {
           setImageBase64List(journal.images);
           setImageIds(journal.images.map(() => uuidv4()));
@@ -312,6 +319,7 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
         text: text.trim(),
         mood: selectedMood || undefined, // ADD THIS LINE
         images: imageBase64List.length > 0 ? imageBase64List : undefined,
+        tags: tags.length > 0 ? tags : undefined,
       };
 
       await VaultStorageProvider.saveJournal(journal, encryptionKey);
@@ -341,6 +349,23 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
       setIsSaving(false);
     }
   };
+
+  // Tag helpers
+  const handleAddTag = () => {
+    const trimmed = tagInputValue.trim().toLowerCase();
+    if (trimmed && !tags.includes(trimmed) && tags.length < MAX_TAGS) {
+      setTags([...tags, trimmed]);
+    }
+    setTagInputValue("");
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setTags(tags.filter((t) => t !== tag));
+  };
+
+  // Word count helper
+  const trimmedText = text.trim();
+  const wordCount = trimmedText ? trimmedText.split(/\s+/).length : 0;
 
   // Define Markdown styles based on current theme
   const markdownStyles = getMarkdownStyles(theme);
@@ -501,6 +526,75 @@ const JournalEditorScreen: React.FC<{ navigation: any; route: any }> = ({
             onSelectMood={setSelectedMood}
             label="I am feeling:"
           />
+
+          {/* Tags Section */}
+          <View style={styles.tagsSection}>
+            <View style={styles.divider} />
+            <View style={styles.tagsSectionHeader}>
+              <Text variant="labelLarge" style={{ color: theme.colors.outline }}>
+                Tags
+              </Text>
+              <Text
+                variant="labelSmall"
+                style={{ color: theme.colors.onSurfaceVariant, opacity: 0.6 }}
+              >
+                {tags.length}/{MAX_TAGS}
+              </Text>
+            </View>
+            <View style={styles.tagInputRow}>
+              <TextInput
+                placeholder="Add a tag (lowercase)…"
+                value={tagInputValue}
+                onChangeText={setTagInputValue}
+                onSubmitEditing={handleAddTag}
+                mode="flat"
+                dense
+                returnKeyType="done"
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
+                style={[
+                  styles.tagInput,
+                  { backgroundColor: theme.colors.surfaceVariant },
+                ]}
+                contentStyle={styles.tagInputContent}
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                right={
+                  tagInputValue.trim() ? (
+                    <TextInput.Icon
+                      icon="plus-circle-outline"
+                      onPress={handleAddTag}
+                      color={theme.colors.primary}
+                    />
+                  ) : undefined
+                }
+              />
+            </View>
+            {tags.length > 0 && (
+              <View style={styles.tagsRow}>
+                {tags.map((tag) => (
+                  <Chip
+                    key={tag}
+                    onClose={() => handleRemoveTag(tag)}
+                    style={styles.tagChip}
+                    textStyle={styles.tagChipText}
+                    compact
+                  >
+                    #{tag}
+                  </Chip>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Word Count */}
+          {trimmedText.length > 0 && (
+            <Text
+              variant="labelSmall"
+              style={[styles.wordCount, { color: theme.colors.onSurfaceVariant }]}
+            >
+              {wordCount} {wordCount === 1 ? "word" : "words"}
+            </Text>
+          )}
 
           {/* Attachments Section */}
           {(imageBase64List.length > 0 || isCompressingImage) && (
@@ -793,6 +887,46 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 40,
     right: 20,
+  },
+
+  // Tags
+  tagsSection: {
+    marginTop: 24,
+  },
+  tagsSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  tagInputRow: {
+    marginBottom: 10,
+  },
+  tagInput: {
+    borderRadius: 10,
+    paddingHorizontal: 0,
+  },
+  tagInputContent: {
+    fontSize: 14,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+  },
+  tagChip: {
+    height: 30,
+  },
+  tagChipText: {
+    fontSize: 12,
+  },
+
+  // Word count
+  wordCount: {
+    marginTop: 16,
+    textAlign: "right",
+    opacity: 0.5,
   },
 });
 

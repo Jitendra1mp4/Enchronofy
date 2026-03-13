@@ -8,10 +8,11 @@ import { getJournalCardStyle } from "@/src/utils/theme";
 import { useFocusEffect } from "@react-navigation/native";
 import { format as DateFormat, isFuture, parseISO } from "date-fns";
 import React, { useCallback, useMemo, useState } from "react";
-import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
+import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 import {
   Card,
+  Chip,
   FAB,
   IconButton,
   Searchbar,
@@ -34,6 +35,7 @@ import { Alert } from "@/src/utils/alert";
 import { resolveImmediately } from "@/src/utils/immediatePromiseResolver";
 
 const VaultStorageProvider = getVaultStorageProvider();
+const MAX_TAGS_PER_CARD = 2;
 
 const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   navigation,
@@ -52,6 +54,17 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
   // --- Local UI State ---
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+  const [selectedMoodFilter, setSelectedMoodFilter] = useState<string | null>(null);
+
+  const toggleTagFilter = useCallback(
+    (tag: string) => setSelectedTagFilter((prev) => (prev === tag ? null : tag)),
+    [],
+  );
+  const toggleMoodFilter = useCallback(
+    (mood: string) => setSelectedMoodFilter((prev) => (prev === mood ? null : mood)),
+    [],
+  );
 
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -76,14 +89,39 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
       result = result.filter(
         (journal) =>
           (journal.title || "").toLowerCase().includes(query) ||
-          journal.text.toLowerCase().includes(query),
+          journal.text.toLowerCase().includes(query) ||
+          (journal.tags || []).some((tag) => tag.toLowerCase().includes(query)),
       );
+    }
+
+    if (selectedTagFilter) {
+      result = result.filter((journal) =>
+        (journal.tags || []).includes(selectedTagFilter),
+      );
+    }
+
+    if (selectedMoodFilter) {
+      result = result.filter((journal) => journal.mood === selectedMoodFilter);
     }
 
     return result.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-  }, [journals, selectedDate, searchQuery]);
+  }, [journals, selectedDate, searchQuery, selectedTagFilter, selectedMoodFilter]);
+
+  // All unique tags across all journals (not just filtered), for filter chips
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    journals.forEach((j) => (j.tags || []).forEach((t) => tagSet.add(t)));
+    return Array.from(tagSet).sort();
+  }, [journals]);
+
+  // All unique moods used across journals
+  const allMoods = useMemo(() => {
+    const moodSet = new Set<string>();
+    journals.forEach((j) => { if (j.mood) moodSet.add(j.mood); });
+    return Array.from(moodSet);
+  }, [journals]);
 
   const loadJournals = useCallback(async () => {
     if (!encryptionKey) return;
@@ -391,6 +429,18 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
                   </View>
                 )}
 
+                {(item.tags ?? []).slice(0, MAX_TAGS_PER_CARD).map((tag) => (
+                  <Chip
+                    key={tag}
+                    compact
+                    style={styles.cardTagChip}
+                    textStyle={styles.cardTagChipText}
+                    onPress={() => toggleTagFilter(tag)}
+                  >
+                    #{tag}
+                  </Chip>
+                ))}
+
                 <View style={styles.actionButtonContainer}>
                   <IconButton
                     icon="trash-can-outline"
@@ -479,18 +529,61 @@ const JournalListScreen: React.FC<{ navigation: any; route: any }> = ({
         />
       )}
 
+      {/* Tag & Mood Filter Chips */}
+      {(allTags.length > 0 || allMoods.length > 0) && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterScrollContent}
+        >
+          {allTags.map((tag) => (
+            <Chip
+              key={`tag-${tag}`}
+              selected={selectedTagFilter === tag}
+              onPress={() => toggleTagFilter(tag)}
+              style={styles.filterChip}
+              compact
+            >
+              #{tag}
+            </Chip>
+          ))}
+          {allMoods.map((mood) => {
+            const moodOption = MOOD_OPTIONS.find((m) => m.value === mood);
+            if (!moodOption) return null;
+            return (
+              <Chip
+                key={`mood-${mood}`}
+                selected={selectedMoodFilter === mood}
+                onPress={() => toggleMoodFilter(mood)}
+                style={styles.filterChip}
+                compact
+              >
+                {moodOption.emoji} {moodOption.label}
+              </Chip>
+            );
+          })}
+        </ScrollView>
+      )}
+
       {/* Content */}
       {filteredJournals.length === 0 && !isGlobalLoading ? (
         <View style={styles.empty}>
           <Text variant="headlineSmall" style={styles.emptyTitle}>
-            {searchQuery ? "No matches found" : "No journals yet"}
+            {searchQuery || selectedTagFilter || selectedMoodFilter
+              ? "No matches found"
+              : "No journals yet"}
           </Text>
           <Text variant="bodyMedium" style={styles.emptyText}>
             {searchQuery
               ? "Try different keywords"
-              : selectedDateFormatted
-                ? `No entries for ${selectedDateFormatted}`
-                : "Start your first journal entry"}
+              : selectedTagFilter
+                ? `No entries tagged #${selectedTagFilter}`
+                : selectedMoodFilter
+                  ? "No entries with this mood"
+                  : selectedDateFormatted
+                    ? `No entries for ${selectedDateFormatted}`
+                    : "Start your first journal entry"}
           </Text>
         </View>
       ) : (
@@ -682,6 +775,28 @@ const styles = StyleSheet.create({
     margin: 16,
     right: 20,
     bottom: 80,
+  },
+
+  // Filter chips
+  filterScroll: {
+    marginBottom: 4,
+  },
+  filterScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+    paddingVertical: 4,
+  },
+  filterChip: {
+    marginRight: 0,
+  },
+
+  // Card tag chips
+  cardTagChip: {
+    height: 26,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  cardTagChipText: {
+    fontSize: 11,
   },
 });
 
